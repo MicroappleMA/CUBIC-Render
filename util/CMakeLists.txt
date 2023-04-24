@@ -6,7 +6,4 @@ set(SOURCE_FILES
     "tiny_gltf_loader.h"
    )
 
-cuda_add_library(util
-   ${SOURCE_FILES}
-   OPTIONS -arch=sm_52
-   )
+add_library(util ${SOURCE_FILES})

@@ -1,13 +1,12 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.24)
 
-project(cis565_rasterizer)
-
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+project(rasterizer CUDA CXX)
 
 # Set up include and lib paths
 include_directories(.)
 include_directories("external")
 include_directories("external/include")
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(EXTERNAL_LIB_PATH "external/lib/osx")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -23,14 +22,17 @@ list(APPEND CMAKE_LIBRARY_PATH "${EXTERNAL_LIB_PATH}")
 
 set(GLFW_INCLUDE_DIR "external/include")
 set(GLFW_LIBRARY_DIR "${EXTERNAL_LIB_PATH}")
-find_library(GLFW_LIBRARY "glfw3" HINTS "${GLFW_LIBRARY_DIR}")
+find_library(GLFW_LIBRARY "glfw3" HINTS "${GLFW_LIBRARY_DIR}" REQUIRED)
 
 set(GLEW_INCLUDE_DIR "external/include")
-set(GLEW_LIBRARY_DIR "${EXTERNAL_LIB_PATH}")
+set(GLEW_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/glew32s.lib")
 add_definitions(-DGLEW_STATIC)
-find_package(GLEW)
+find_library(GLEW_LIBRARY "glew32s" HINTS "${GLEW_LIBRARY_DIR}" REQUIRED)
 
-find_package(OpenGL)
+find_package(OpenGL REQUIRED)
+
+find_package(CUDA 12.0 REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
 set(CORELIBS
     "${GLFW_LIBRARY}"
@@ -39,6 +41,7 @@ set(CORELIBS
     )
 
 # Enable C++11 for host code
+set(CMAKE_CUDA_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 
 # Set up different build configurations
@@ -75,20 +78,20 @@ if (WIN32)
     list(APPEND CORELIBS legacy_stdio_definitions.lib)
 endif()
 
-# CUDA linker options
-find_package(Threads REQUIRED)
-find_package(CUDA 8.0 REQUIRED)
-set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON)
-set(CUDA_SEPARABLE_COMPILATION ON)
-
 #add_subdirectory(stream_compaction)  # TODO: uncomment if using your own stream compaction
 add_subdirectory(src)
 add_subdirectory(util)
 
-cuda_add_executable(${CMAKE_PROJECT_NAME}
-    "src/main.hpp"
-    "src/main.cpp"
-    )
+add_executable(${CMAKE_PROJECT_NAME}
+        "src/main.hpp"
+        "src/main.cpp"
+        )
+
+
+# CUDA linker options
+find_package(Threads REQUIRED)
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON)
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
     src
@@ -97,10 +100,11 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     ${CORELIBS}
     )
 
-add_custom_command(
-    TARGET ${CMAKE_PROJECT_NAME}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/shaders
-        ${CMAKE_BINARY_DIR}/shaders
-    )
+#add_custom_command(
+#    TARGET ${CMAKE_PROJECT_NAME}
+#    POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory
+#        ${CMAKE_SOURCE_DIR}/shaders
+#        ${CMAKE_BINARY_DIR}/shaders
+#    )
+

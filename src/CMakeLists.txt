@@ -4,7 +4,6 @@ set(SOURCE_FILES
     "rasterizeTools.h"
     )
 
-cuda_add_library(src
-    ${SOURCE_FILES}
-    OPTIONS -arch=sm_20
-    )
+
+add_library(src ${SOURCE_FILES})
+set_target_properties(src PROPERTIES LINKER_LANGUAGE CUDA)

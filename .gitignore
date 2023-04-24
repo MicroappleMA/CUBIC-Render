@@ -562,3 +562,6 @@ xcuserdata
 
 ## VS code
 .vscode/
+
+## CLion
+cmake-build-debug/

@@ -18,6 +18,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+
 namespace {
 
 	typedef unsigned short VertexIndex;
@@ -143,9 +144,11 @@ void render(int w, int h, Fragment *fragmentBuffer, glm::vec3 *framebuffer) {
     int index = x + (y * w);
 
     if (x < w && y < h) {
-        framebuffer[index] = fragmentBuffer[index].color;
+        // framebuffer[index] = fragmentBuffer[index].color;
 
-		// TODO: add your fragment shader code here
+        framebuffer[index] = glm::vec3(1,1,1);
+
+        // TODO: add your fragment shader code here
 
     }
 }
@@ -395,7 +398,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 					dim3 numThreadsPerBlock(128);
 					dim3 numBlocks((numIndices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
 					cudaMalloc(&dev_indices, byteLength);
-					_deviceBufferCopy << <numBlocks, numThreadsPerBlock >> > (
+					_deviceBufferCopy <<<numBlocks, numThreadsPerBlock >>> (
 						numIndices,
 						(BufferByte*)dev_indices,
 						dev_bufferView,
@@ -498,7 +501,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 						int byteLength = numVertices * n * componentTypeByteSize;
 						cudaMalloc(dev_attribute, byteLength);
 
-						_deviceBufferCopy << <numBlocks, numThreadsPerBlock >> > (
+						_deviceBufferCopy <<<numBlocks, numThreadsPerBlock >>> (
 							n * numVertices,
 							*dev_attribute,
 							dev_bufferView,
@@ -556,7 +559,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 					cudaDeviceSynchronize();
 					
 					dim3 numBlocksNodeTransform((numVertices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
-					_nodeMatrixTransform << <numBlocksNodeTransform, numThreadsPerBlock >> > (
+					_nodeMatrixTransform <<<numBlocksNodeTransform, numThreadsPerBlock >>> (
 						numVertices,
 						dev_position,
 						dev_normal,
@@ -702,10 +705,10 @@ void rasterize(uchar4 *pbo, const glm::mat4 & MVP, const glm::mat4 & MV, const g
 				dim3 numBlocksForVertices((p->numVertices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
 				dim3 numBlocksForIndices((p->numIndices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
 
-				_vertexTransformAndAssembly << < numBlocksForVertices, numThreadsPerBlock >> >(p->numVertices, *p, MVP, MV, MV_normal, width, height);
+				_vertexTransformAndAssembly <<< numBlocksForVertices, numThreadsPerBlock >>>(p->numVertices, *p, MVP, MV, MV_normal, width, height);
 				checkCUDAError("Vertex Processing");
 				cudaDeviceSynchronize();
-				_primitiveAssembly << < numBlocksForIndices, numThreadsPerBlock >> >
+				_primitiveAssembly <<< numBlocksForIndices, numThreadsPerBlock >>>
 					(p->numIndices, 
 					curPrimitiveBeginId, 
 					dev_primitives, 
@@ -720,14 +723,14 @@ void rasterize(uchar4 *pbo, const glm::mat4 & MVP, const glm::mat4 & MV, const g
 	}
 	
 	cudaMemset(dev_fragmentBuffer, 0, width * height * sizeof(Fragment));
-	initDepth << <blockCount2d, blockSize2d >> >(width, height, dev_depth);
+	initDepth <<<blockCount2d, blockSize2d >>>(width, height, dev_depth);
 	
 	// TODO: rasterize
 
 
 
     // Copy depthbuffer colors into framebuffer
-	render << <blockCount2d, blockSize2d >> >(width, height, dev_fragmentBuffer, dev_framebuffer);
+	render <<<blockCount2d, blockSize2d >>>(width, height, dev_fragmentBuffer, dev_framebuffer);
 	checkCUDAError("fragment shader");
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
     sendImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, width, height, dev_framebuffer);
