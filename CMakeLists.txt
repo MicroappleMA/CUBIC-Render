@@ -47,12 +47,12 @@ set(CMAKE_CXX_STANDARD 11)
 # Set up different build configurations
 set(CMAKE_CONFIGURATION_TYPES Debug;RelWithDebInfo;Release
     CACHE STRING "Set configuration types" FORCE)
-list(APPEND CUDA_NVCC_FLAGS_DEBUG          -O0 -g -G)
+list(APPEND CUDA_NVCC_FLAGS_DEBUG          -O0 -g -G -DDEBUG)
 list(APPEND CUDA_NVCC_FLAGS_RELWITHDEBINFO -O2 -g -lineinfo)
 list(APPEND CUDA_NVCC_FLAGS_RELEASE        -O3    -DNDEBUG)
 set(CUDA_PROPAGATE_HOST_FLAGS ON)
 set(CMAKE_CXX_FLAGS                       "/MD /EHsc /D _CRT_SECURE_NO_WARNINGS")
-set(CMAKE_CXX_FLAGS_DEBUG                 "/Od /Zi")
+set(CMAKE_CXX_FLAGS_DEBUG                 "/Od /Zi /D DEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO        "/O2 /Zi")
 set(CMAKE_CXX_FLAGS_RELEASE               "/O2 /D NDEBUG")
 

@@ -19,11 +19,29 @@
 //-------------------------------
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        cout << "Usage: [gltf file]. Press Enter to exit" << endl;
+#ifdef DEBUG
+    cout << "CUDA Rasterizer :: Debug Version\n";
+#else
+    cout << "CUDA Rasterizer :: Release Version\n";
+#endif
+    if (argc != 2 && argc != 4) {
+        cout << "Usage: [gltf file] (width) (height). Press Enter to exit\n";
 		getchar();
         return 0;
     }
+
+    if(argc == 4)
+    {
+        width = std::atoi(argv[2]);
+        height = std::atoi(argv[3]);
+        if(width == 0 || height == 0)
+        {
+            cout << "Error: width or height equal to zero\n";
+            return -1;
+        }
+    }
+
+    cout<<"Width = "<<width<<", Height = "<<height<<"\n";
 
 	tinygltf::Scene scene;
 	tinygltf::TinyGLTFLoader loader;
@@ -41,11 +59,11 @@ int main(int argc, char **argv) {
 	}
 
 	if (!err.empty()) {
-		printf("Err: %s\n", err.c_str());
+        cout<<"Err: "+err;
 	}
 
 	if (!ret) {
-		printf("Failed to parse glTF\n");
+        cout<<"Failed to parse glTF\n";
 		return -1;
 	}
 
@@ -77,7 +95,7 @@ void mainLoop() {
             seconds = seconds2;
         }
 
-        string title = "CIS565 Rasterizer | " + utilityCore::convertIntToString((int)fps) + " FPS";
+        string title = "CUDA Rasterizer | " + utilityCore::convertIntToString((int)fps) + " FPS";
         glfwSetWindowTitle(window, title.c_str());
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
@@ -120,7 +138,7 @@ void runCuda() {
 	glm::mat4 MVP = P * MV;
 
     cudaGLMapBufferObject((void **)&dptr, pbo);
-	rasterize(dptr, MVP, MV, MV_normal);
+	rasterize(dptr, M, V, P);
     cudaGLUnmapBufferObject(pbo);
 
     frame++;
@@ -138,9 +156,7 @@ bool init(const tinygltf::Scene & scene) {
         return false;
     }
 
-    width = 800;
-    height = 800;
-    window = glfwCreateWindow(width, height, "CIS 565 Pathtracer", NULL, NULL);
+    window = glfwCreateWindow(width, height, "", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return false;
@@ -176,7 +192,7 @@ bool init(const tinygltf::Scene & scene) {
 				std::cout << it->second[i]
 					<< ((i != (it->second.size() - 1)) ? ", " : "");
 			}
-			std::cout << " ] " << std::endl;
+			std::cout << " ] \n";
 		}
 	}
 
@@ -207,7 +223,6 @@ void initPBO() {
     // Allocate data for the buffer. 4-channel 8-bit image
     glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
     cudaGLRegisterBufferObject(pbo);
-
 }
 
 void initCuda() {
@@ -310,9 +325,6 @@ void deleteTexture(GLuint *tex) {
 void shut_down(int return_code) {
     rasterizeFree();
     cudaDeviceReset();
-#ifdef __APPLE__
-    glfwTerminate();
-#endif
     exit(return_code);
 }
 
@@ -395,6 +407,6 @@ void mouseMotionCallback(GLFWwindow* window, double xpos, double ypos)
 
 void mouseWheelCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	const double s = 1.0;	// sensitivity
+	const double s = 0.4;	// sensitivity
 	z_trans += (float)(s * yoffset);
 }
