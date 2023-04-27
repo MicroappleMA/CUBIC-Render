@@ -19,7 +19,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 static const unsigned int tileSize = 8;
-static const unsigned int maxPrimitivesPerTile = 256;
+static const unsigned int maxPrimitivesPerTile = 1024;
 
 namespace {
 
