@@ -68,7 +68,9 @@ set(UTIL_FILES
 set(CUDA_FILES
     "src/rasterize.cu"
     "src/rasterize.h"
-    "src/rasterizeTools.h")
+    "src/rasterizeTools.h"
+    "src/shader.h"
+    "src/data.h")
 
 set(MAIN_FILES
     "src/main.hpp"

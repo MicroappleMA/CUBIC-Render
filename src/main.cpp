@@ -50,12 +50,12 @@ int main(int argc, char **argv) {
 	std::string ext = getFilePathExtension(input_filename);
 
 	bool ret = false;
-	if (ext.compare("glb") == 0) {
+	if (ext == "glb") {
 		// assume binary glTF.
-		ret = loader.LoadBinaryFromFile(&scene, &err, input_filename.c_str());
+		ret = loader.LoadBinaryFromFile(&scene, &err, input_filename);
 	} else {
 		// assume ascii glTF.
-		ret = loader.LoadASCIIFromFile(&scene, &err, input_filename.c_str());
+		ret = loader.LoadASCIIFromFile(&scene, &err, input_filename);
 	}
 
 	if (!err.empty()) {
@@ -182,10 +182,8 @@ bool init(const tinygltf::Scene & scene) {
 	glfwSetScrollCallback(window, mouseWheelCallback);
 
 	{
-		std::map<std::string, std::vector<std::string> >::const_iterator it(
-			scene.scenes.begin());
-		std::map<std::string, std::vector<std::string> >::const_iterator itEnd(
-			scene.scenes.end());
+		auto it(scene.scenes.begin());
+		auto itEnd(scene.scenes.end());
 
 		for (; it != itEnd; it++) {
 			for (size_t i = 0; i < it->second.size(); i++) {
@@ -346,8 +344,8 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
 //----- util -----------------
 //----------------------------
 static std::string getFilePathExtension(const std::string &FileName) {
-	if (FileName.find_last_of(".") != std::string::npos)
-		return FileName.substr(FileName.find_last_of(".") + 1);
+	if (FileName.find_last_of('.') != std::string::npos)
+		return FileName.substr(FileName.find_last_of('.') + 1);
 	return "";
 }
 

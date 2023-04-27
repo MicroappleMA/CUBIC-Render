@@ -13,148 +13,13 @@
 #include <thrust/random.h>
 #include <util/checkCUDAError.h>
 #include <util/tiny_gltf_loader.h>
-#include "rasterizeTools.h"
-#include "rasterize.h"
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-static const unsigned int tileSize = 8;
-static const unsigned int maxPrimitivesPerTile = 1024;
-
-namespace {
-
-	typedef unsigned short VertexIndex;
-	typedef glm::vec3 VertexAttributePosition;
-	typedef glm::vec3 VertexAttributeNormal;
-	typedef glm::vec2 VertexAttributeTexcoord;
-	typedef unsigned char TextureData;
-
-	typedef unsigned char BufferByte;
-
-	enum PrimitiveType{
-		Point = 1,
-		Line = 2,
-		Triangle = 3
-	};
-
-	struct VertexOut {
-		glm::vec4 objectPos;
-        glm::vec4 worldPos;
-        glm::vec4 viewPos;
-        glm::vec4 clipPos;
-        glm::vec3 windowPos;
-        glm::vec3 objectNor;
-        glm::vec3 worldNor;
-        glm::vec3 viewNor;
-        glm::vec3 color;
-		// TODO: add new attributes to your VertexOut
-		// The attributes listed below might be useful, 
-		// but always feel free to modify on your own
-
-
-		 glm::vec2 texcoord0;
-		 TextureData* dev_diffuseTex = NULL;
-		// int texWidth, texHeight;
-		// ...
-	};
-
-	struct Primitive {
-		PrimitiveType primitiveType = Triangle;	// C++ 11 init
-		VertexOut v[3];
-	};
-
-	struct Fragment {
-        float depth;
-		glm::vec3 color;
-
-		// TODO: add new attributes to your Fragment
-		// The attributes listed below might be useful, 
-		// but always feel free to modify on your own
-
-		// glm::vec3 eyePos;	// eye space position used for shading
-		// glm::vec3 eyeNor;
-		// VertexAttributeTexcoord texcoord0;
-		// TextureData* dev_diffuseTex;
-		// ...
-	};
-
-    struct Tile {
-        unsigned int numPrimitives;
-        unsigned int primitiveId[maxPrimitivesPerTile];
-    };
-
-    struct SceneInfo {
-        unsigned int numPrimitives;
-    };
-
-	struct PrimitiveDevBufPointers {
-		int primitiveMode;	//from tinygltfloader macro
-		PrimitiveType primitiveType;
-		int numPrimitives;
-		int numIndices;
-		int numVertices;
-
-		// Vertex In, const after loaded
-		VertexIndex* dev_indices;
-		VertexAttributePosition* dev_position;
-		VertexAttributeNormal* dev_normal;
-		VertexAttributeTexcoord* dev_texcoord0;
-
-		// Materials, add more attributes when needed
-		TextureData* dev_diffuseTex;
-		int diffuseTexWidth;
-		int diffuseTexHeight;
-		// TextureData* dev_specularTex;
-		// TextureData* dev_normalTex;
-		// ...
-
-		// Vertex Out, vertex used for rasterization, this is changing every frame
-		VertexOut* dev_verticesOut;
-
-		// TODO: add more attributes when needed
-	};
-
-}
-
-static std::map<std::string, std::vector<PrimitiveDevBufPointers>> mesh2PrimitivesMap;
-
-static int width = 0;
-static int height = 0;
-
-static SceneInfo sceneInfo;
-
-static Primitive *dev_primitives = NULL;
-static Fragment *dev_fragmentBuffer = NULL;
-static Tile *dev_tileBuffer = NULL;
-static glm::vec3 *dev_framebuffer = NULL;
-
-
-////////////////////////////////////////////////////////////////
-///                           Debug                          ///
-////////////////////////////////////////////////////////////////
-__global__
-void debug_printPrimitives(int numPrimitives, Primitive *dev_primitives)
-{
-    int pid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (pid<numPrimitives)
-    {
-        printf("---Primitive %d---\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n------\n\n",
-               pid,
-               dev_primitives[pid].v[0].windowPos.x,
-               dev_primitives[pid].v[0].windowPos.y,
-               dev_primitives[pid].v[0].windowPos.z,
-               1.0,//dev_primitives[pid].v[0].windowPos.w,
-               dev_primitives[pid].v[1].windowPos.x,
-               dev_primitives[pid].v[1].windowPos.y,
-               dev_primitives[pid].v[1].windowPos.z,
-               1.0,//dev_primitives[pid].v[1].windowPos.w,
-               dev_primitives[pid].v[2].windowPos.x,
-               dev_primitives[pid].v[2].windowPos.y,
-               dev_primitives[pid].v[2].windowPos.z,
-               1.0//dev_primitives[pid].v[2].windowPos.w
-               );
-    }
-}
+#include "data.h"
+#include "rasterizeTools.h"
+#include "rasterize.h"
+#include "shader.h"
 
 
 ////////////////////////////////////////////////////////////////
@@ -193,37 +58,9 @@ void render(int w, int h, Fragment *fragmentBuffer, glm::vec3 *framebuffer) {
     int index = x + (y * w);
 
     if (x < w && y < h) {
-        framebuffer[index] = fragmentBuffer[index].color;
-
-        // framebuffer[index] = glm::vec3(1,1,1);
-
-        // TODO: add your fragment shader code here
-
+        framebuffer[index] = fragmentShader(fragmentBuffer[index]);
     }
 }
-
-__global__
-void _clearBuffer(Tile *dev_tileBuffer, Fragment *dev_fragmentBuffer, int width, int height, int tileSize)
-{
-	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-    const int maxTileNumX = (width + tileSize - 1)/tileSize;
-    const int maxTileNumY = (height + tileSize - 1)/tileSize;
-
-	if (x < width && y < height)
-	{
-        int index = x + (y * width);
-        dev_fragmentBuffer[index].depth = 1;
-        dev_fragmentBuffer[index].color = glm::vec3(0,0,0);
-	}
-
-    if (x < maxTileNumX && y < maxTileNumY)
-    {
-        int index = x + y * maxTileNumX;
-        dev_tileBuffer[index].numPrimitives=0;
-    }
-}
-
 
 __global__ 
 void _vertexTransformAndAssembly(
@@ -236,30 +73,14 @@ void _vertexTransformAndAssembly(
 	int vid = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (vid < numVertices) {
 
-		// TODO: Apply vertex transformation here
-		// Multiply the MVP matrix for each vertex position, this will transform everything into clipping space
-		// Then divide the pos by its w element to transform into NDC space
-		// Finally transform x and y to viewport space
+        VertexIn in = {primitive.dev_position[vid],
+                       primitive.dev_normal[vid]};
+        VertexOut &out = primitive.dev_verticesOut[vid];
 
-        VertexOut& vertexOut = primitive.dev_verticesOut[vid];
-        vertexOut.objectPos = glm::vec4(primitive.dev_position[vid],1);
-        vertexOut.worldPos = M * vertexOut.objectPos;
-        vertexOut.viewPos = V * vertexOut.worldPos;
-        vertexOut.clipPos = P * vertexOut.viewPos;
-        vertexOut.clipPos /= vertexOut.clipPos.w;
-        vertexOut.windowPos = glm::vec3((vertexOut.clipPos.x + 1.0f) * 0.5f * width,
-                                        (1.0f - vertexOut.clipPos.y) * 0.5f * height,
-                                        vertexOut.clipPos.z);
-        vertexOut.objectNor = primitive.dev_normal[vid];
-        vertexOut.worldNor = glm::transpose(glm::inverse(glm::mat3(M))) * vertexOut.objectNor;
-        vertexOut.viewNor = glm::transpose(glm::inverse(glm::mat3(V))) * vertexOut.worldNor;
-
-
-
-
-		// TODO: Apply vertex assembly here
-		// Assemble all attribute arraies into the primitive array
-		
+        out = vertexShader(in, M, V, P);
+        out.windowPos = {(out.clipPos.x + 1.0f) * 0.5f * width,
+                         (1.0f - out.clipPos.y) * 0.5f * height,
+                         out.clipPos.z};
 	}
 }
 
@@ -282,7 +103,7 @@ void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_
             vid = iid % (int)primitive.primitiveType;
 			dev_primitives[pid + curPrimitiveBeginId].v[vid]
 				= primitive.dev_verticesOut[primitive.dev_indices[iid]];
-            dev_primitives[pid + curPrimitiveBeginId].v[vid].color = glm::vec3(vid==0,vid==1,vid==2);
+            dev_primitives[pid + curPrimitiveBeginId].v[vid].color = {vid==0,vid==1,vid==2};
             dev_primitives[pid + curPrimitiveBeginId].primitiveType = primitive.primitiveType;
 		}
 
@@ -296,31 +117,63 @@ __global__
 void _generateTileBuffer(int numPrimitives, Primitive* dev_primitives, Tile* dev_tileBuffer, int width, int height, int tileSize)
 {
     const unsigned int pid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(pid<numPrimitives){
-        const int maxTileNumX = (width + tileSize - 1)/tileSize;
-        const int maxTileNumY = (height + tileSize - 1)/tileSize;
-        const Primitive & primitive = dev_primitives[pid];
-        const glm::vec3 (&pos)[] = {primitive.v[0].windowPos,
-                                    primitive.v[1].windowPos,
-                                    primitive.v[2].windowPos};
+    if(pid>=numPrimitives) return;
 
-        const AABB bound = getAABBForTriangle(pos);
-        const int minTileIdX = glm::max(((int)glm::round(bound.min.x))/tileSize,0);
-        const int maxTileIdX = glm::min(((int)glm::round(bound.max.x))/tileSize,maxTileNumX-1);
-        const int minTileIdY = glm::max(((int)glm::round(bound.min.y))/tileSize,0);
-        const int maxTileIdY = glm::min(((int)glm::round(bound.max.y))/tileSize,maxTileNumY-1);
+    const Primitive & primitive = dev_primitives[pid];
+    const glm::vec3 (&pos)[] = {primitive.v[0].windowPos,
+                                primitive.v[1].windowPos,
+                                primitive.v[2].windowPos};
 
-        for(int x=minTileIdX;x<=maxTileIdX;x++)
+    // Back Face Culling
+    glm::vec3 nor = glm::cross(pos[0]-pos[1],pos[1]-pos[2]);
+    if(nor.z > 0) return;
+
+    const int maxTileNumX = (width + tileSize - 1)/tileSize;
+    const int maxTileNumY = (height + tileSize - 1)/tileSize;
+
+    const AABB bound = getAABBForTriangle(pos);
+    const int minTileIdX = glm::max(((int)glm::round(bound.min.x))/tileSize,0);
+    const int maxTileIdX = glm::min(((int)glm::round(bound.max.x))/tileSize,maxTileNumX-1);
+    const int minTileIdY = glm::max(((int)glm::round(bound.min.y))/tileSize,0);
+    const int maxTileIdY = glm::min(((int)glm::round(bound.max.y))/tileSize,maxTileNumY-1);
+
+    for(int x=minTileIdX;x<=maxTileIdX;x++)
+    {
+        for(int y=minTileIdY;y<=maxTileIdY;y++)
         {
-            for(int y=minTileIdY;y<=maxTileIdY;y++)
-            {
-                const unsigned int tid = x + y * maxTileNumX;
-                const unsigned int id = atomicAdd(&(dev_tileBuffer[tid].numPrimitives),1);
-                if(id<maxPrimitivesPerTile)
-                    dev_tileBuffer[tid].primitiveId[id] = pid;
-            }
+            const unsigned int tid = x + y * maxTileNumX;
+            const unsigned int id = atomicAdd(&(dev_tileBuffer[tid].numPrimitives),1);
+            if(id<maxPrimitivesPerTile)
+                dev_tileBuffer[tid].primitiveId[id] = pid;
         }
     }
+
+}
+
+#define INTERPOLATE(out, in, coef, attri) {out.attri = in[0].attri * coef.x + in[1].attri * coef.y + in[2].attri * coef.z;}
+
+__device__
+Fragment _generateFragment(const glm::vec3 &barycentricCoord, const Primitive &primitive)
+{
+    glm::vec3 triViewZ = {primitive.v[0].viewPos.z,
+                          primitive.v[1].viewPos.z,
+                          primitive.v[2].viewPos.z};
+    glm::vec3 coef = getInterpolationCoef(barycentricCoord, triViewZ);
+    Fragment buffer;
+
+    // Implement Interpolation Here
+    // Need to modify if the struct of Fragment changes
+    INTERPOLATE(buffer, primitive.v, coef, color);
+    INTERPOLATE(buffer, primitive.v, coef, objectPos);
+    INTERPOLATE(buffer, primitive.v, coef, worldPos);
+    INTERPOLATE(buffer, primitive.v, coef, viewPos);
+    INTERPOLATE(buffer, primitive.v, coef, clipPos);
+    INTERPOLATE(buffer, primitive.v, coef, windowPos);
+    INTERPOLATE(buffer, primitive.v, coef, objectNor);
+    INTERPOLATE(buffer, primitive.v, coef, worldNor);
+    INTERPOLATE(buffer, primitive.v, coef, viewNor);
+
+    return buffer;
 }
 
 __global__
@@ -343,9 +196,14 @@ void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_f
     if(tileIdX>=maxTileNumX||tileIdY>=maxTileNumY) return;
     if(posX>=width||posY>=height) return;
 
-    tileFragment[tilePos] = dev_fragmentBuffer[pos]; // Copy from global memory;
-    int maxPrimitiveIdIndex = glm::min(dev_tileBuffer[tileId].numPrimitives,maxPrimitivesPerTile);
 
+    // Init Fragment Here
+    tileFragment[tilePos].depth = 1;
+    tileFragment[tilePos].color = {0,0,0};
+    tileFragment[tilePos].material = InValid;
+
+
+    int maxPrimitiveIdIndex = glm::min(dev_tileBuffer[tileId].numPrimitives,maxPrimitivesPerTile);
     for(int primitiveIdIndex=0;primitiveIdIndex<maxPrimitiveIdIndex;primitiveIdIndex++)
     {
         const Primitive & primitive = dev_primitives[dev_tileBuffer[tileId].primitiveId[primitiveIdIndex]];
@@ -359,8 +217,9 @@ void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_f
             float depth = -getZAtCoordinate(baryCoords, primitivePos);
             if(depth<tileFragment[tilePos].depth)
             {
-                tileFragment[tilePos].color = glm::vec3(1,1,1);
+                tileFragment[tilePos] = _generateFragment(baryCoords, primitive);
                 tileFragment[tilePos].depth = depth;
+                tileFragment[tilePos].material = Lambert;
             } // No need to use atomic because no data race happen
         }
         __syncthreads(); // Ensure all threads are rasterizing the same primitive
@@ -375,10 +234,8 @@ void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_f
  * Perform rasterization.
  */
 void rasterize(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P) {
-    int sideLength2d = 8;
-    dim3 blockSize2d(sideLength2d, sideLength2d);
-    dim3 blockCount2d((width  - 1) / blockSize2d.x + 1,
-		(height - 1) / blockSize2d.y + 1);
+    dim3 blockSize2d(tileSize, tileSize);
+    dim3 blockCount2d((width - 1) / tileSize + 1,(height - 1) / tileSize + 1);
 
 	// Execute your rasterization pipeline here
 	// (See README for rasterization pipeline outline.)
@@ -386,7 +243,7 @@ void rasterize(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm:
 	// Vertex Process & primitive assembly
 	{
         int curPrimitiveBeginId = 0; // change static to non-static
-		dim3 numThreadsPerBlock(128);
+		dim3 numThreadsPerBlock(defaultThreadPerBlock);
 
 		auto it = mesh2PrimitivesMap.begin();
 		auto itEnd = mesh2PrimitivesMap.end();
@@ -417,17 +274,15 @@ void rasterize(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm:
 			}
 		}
 
-        // debug_printPrimitives<<<curPrimitiveBeginId,1>>>(curPrimitiveBeginId,dev_primitives);
 		checkCUDAError("Vertex Processing and Primitive Assembly");
 	}
-	
-	cudaMemset(dev_fragmentBuffer, 0, width * height * sizeof(Fragment));
-    _clearBuffer<<<blockCount2d, blockSize2d>>>(dev_tileBuffer, dev_fragmentBuffer, width, height, tileSize);
+
+    cudaMemset(dev_tileBuffer, 0, ((width + tileSize - 1) / tileSize) * ((height + tileSize - 1) / tileSize) * sizeof(Tile));
     checkCUDAError("_clearBuffer");
 
     // TODO: rasterize
     {
-        dim3 numThreadsPerBlock = 128;
+        dim3 numThreadsPerBlock = defaultThreadPerBlock;
         dim3 numBlocks = (sceneInfo.numPrimitives + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x;
         _generateTileBuffer<<<numBlocks,numThreadsPerBlock>>>
                 (sceneInfo.numPrimitives,
@@ -438,9 +293,7 @@ void rasterize(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm:
                  tileSize);
         checkCUDAError("_generateTileBuffer");
 
-        numThreadsPerBlock = dim3(tileSize, tileSize);
-        numBlocks = dim3((width + tileSize - 1)/tileSize,(height + tileSize - 1)/tileSize);
-        _rasterize<<<numBlocks,numThreadsPerBlock,tileSize*tileSize*sizeof(Fragment)>>>
+        _rasterize<<<blockCount2d,blockSize2d,tileSize*tileSize*sizeof(Fragment)>>>
                 (dev_primitives,
                  dev_tileBuffer,
                  dev_fragmentBuffer,
@@ -452,15 +305,16 @@ void rasterize(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm:
     }
 
 
+    cudaMemset(dev_framebuffer, 0, width * height * sizeof(glm::vec3));
 
     // Copy depthbuffer colors into framebuffer
 	render<<<blockCount2d, blockSize2d>>>(width, height, dev_fragmentBuffer, dev_framebuffer);
 	checkCUDAError("fragment shader");
+
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
     sendImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, width, height, dev_framebuffer);
     checkCUDAError("copy render result to pbo");
 }
-
 
 
 
@@ -514,16 +368,16 @@ void rasterizeFree() {
     ////////////
 
     cudaFree(dev_primitives);
-    dev_primitives = NULL;
+    dev_primitives = nullptr;
 
     cudaFree(dev_fragmentBuffer);
-    dev_fragmentBuffer = NULL;
+    dev_fragmentBuffer = nullptr;
 
     cudaFree(dev_tileBuffer);
-    dev_tileBuffer = NULL;
+    dev_tileBuffer = nullptr;
 
     cudaFree(dev_framebuffer);
-    dev_framebuffer = NULL;
+    dev_framebuffer = nullptr;
 
     checkCUDAError("rasterize Free");
 }
@@ -594,13 +448,13 @@ glm::mat4 getMatrixFromNodeMatrixVector(const tinygltf::Node & n) {
     } else {
         // no matrix, use rotation, scale, translation
 
-        if (n.translation.size() > 0) {
+        if (!n.translation.empty()) {
             curMatrix[3][0] = n.translation[0];
             curMatrix[3][1] = n.translation[1];
             curMatrix[3][2] = n.translation[2];
         }
 
-        if (n.rotation.size() > 0) {
+        if (!n.rotation.empty()) {
             glm::mat4 R;
             glm::quat q;
             q[0] = n.rotation[0];
@@ -646,10 +500,8 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 
     // 1. copy all `bufferViews` to device memory
     {
-        std::map<std::string, tinygltf::BufferView>::const_iterator it(
-                scene.bufferViews.begin());
-        std::map<std::string, tinygltf::BufferView>::const_iterator itEnd(
-                scene.bufferViews.end());
+        auto it(scene.bufferViews.begin());
+        auto itEnd(scene.bufferViews.end());
 
         for (; it != itEnd; it++) {
             const std::string key = it->first;
@@ -718,10 +570,10 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
                         return;
 
                     // TODO: add new attributes for your PrimitiveDevBufPointers when you add new attributes
-                    VertexIndex* dev_indices = NULL;
-                    VertexAttributePosition* dev_position = NULL;
-                    VertexAttributeNormal* dev_normal = NULL;
-                    VertexAttributeTexcoord* dev_texcoord0 = NULL;
+                    VertexIndex* dev_indices = nullptr;
+                    VertexAttributePosition* dev_position = nullptr;
+                    VertexAttributeNormal* dev_normal = nullptr;
+                    VertexAttributeTexcoord* dev_texcoord0 = nullptr;
 
                     // ----------Indices-------------
 
@@ -735,7 +587,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
                     int componentTypeByteSize = sizeof(VertexIndex);
                     int byteLength = numIndices * n * componentTypeByteSize;
 
-                    dim3 numThreadsPerBlock(128);
+                    dim3 numThreadsPerBlock(defaultThreadPerBlock);
                     dim3 numBlocks((numIndices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
                     cudaMalloc(&dev_indices, byteLength);
                     _deviceBufferCopy<<<numBlocks, numThreadsPerBlock>>>(
@@ -784,7 +636,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
                         default:
                             // output error
                             break;
-                    };
+                    }
 
 
                     // ----------Attributes-------------
@@ -813,7 +665,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
                         }
 
                         BufferByte * dev_bufferView = bufferViewDevPointers.at(accessor.bufferView);
-                        BufferByte ** dev_attribute = NULL;
+                        BufferByte ** dev_attribute = nullptr;
 
                         numVertices = accessor.count;
                         int componentTypeByteSize;
@@ -836,7 +688,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 
                         std::cout << accessor.bufferView << "  -  " << it->second << "  -  " << it->first << '\n';
 
-                        dim3 numThreadsPerBlock(128);
+                        dim3 numThreadsPerBlock(defaultThreadPerBlock);
                         dim3 numBlocks((n * numVertices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
                         int byteLength = numVertices * n * componentTypeByteSize;
                         cudaMalloc(dev_attribute, byteLength);
@@ -863,7 +715,7 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
 
                     // You can only worry about this part once you started to
                     // implement textures for your rasterizer
-                    TextureData* dev_diffuseTex = NULL;
+                    TextureData* dev_diffuseTex = nullptr;
                     int diffuseTexWidth = 0;
                     int diffuseTexHeight = 0;
                     if (!primitive.material.empty()) {
@@ -963,3 +815,4 @@ void rasterizeSetBuffers(const tinygltf::Scene & scene) {
     }
 
 }
+
