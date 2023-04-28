@@ -5,6 +5,7 @@
 static const unsigned int tileSize = 8;
 static const unsigned int maxPrimitivesPerTile = 1024;
 static const unsigned int defaultThreadPerBlock = 128;
+static const unsigned int maxTaxNum = 4;
 
 
 typedef unsigned short VertexIndex;
@@ -12,7 +13,6 @@ typedef glm::vec3 VertexAttributePosition;
 typedef glm::vec3 VertexAttributeNormal;
 typedef glm::vec2 VertexAttributeTexcoord;
 typedef unsigned char TextureData;
-
 typedef unsigned char BufferByte;
 
 enum PrimitiveType{
@@ -22,15 +22,26 @@ enum PrimitiveType{
 };
 
 enum MaterialType{
-    InValid = 0,
-    Debug = 1,
-    Direct = 2,
-    Lambert = 3,
+    Invalid,
+    Depth,
+    Debug,
+    Unlit,
+    Lambert
+};
+
+struct Tex
+{
+    TextureData *data;
+    glm::vec2 uv;
+    int width;
+    int height;
 };
 
 struct VertexIn {
-    glm::vec3 pos;
-    glm::vec3 nor;
+    glm::vec3 position;
+    glm::vec3 normal;
+    MaterialType material;
+    Tex tex[maxTaxNum];
 };
 
 struct VertexOut {
@@ -47,11 +58,8 @@ struct VertexOut {
     // The attributes listed below might be useful,
     // but always feel free to modify on your own
 
-
-    glm::vec2 texcoord0;
-    TextureData* dev_diffuseTex = nullptr;
-    // int texWidth, texHeight;
-    // ...
+    Tex tex[maxTaxNum];
+    MaterialType material;
 };
 
 struct Primitive {
@@ -60,18 +68,9 @@ struct Primitive {
 };
 
 struct Fragment {
-    float depth;
-    MaterialType material;
-
     glm::vec3 color;
-    glm::vec4 objectPos;
-    glm::vec4 worldPos;
-    glm::vec4 viewPos;
-    glm::vec4 clipPos;
-    glm::vec3 windowPos;
-    glm::vec3 objectNor;
-    glm::vec3 worldNor;
-    glm::vec3 viewNor;
+    float depth;
+    VertexOut in;
 
     // TODO: add new attributes to your Fragment
     // The attributes listed below might be useful,
@@ -96,6 +95,7 @@ struct SceneInfo {
 struct PrimitiveDevBufPointers {
     int primitiveMode;	//from tinygltfloader macro
     PrimitiveType primitiveType;
+    MaterialType materialType;
     int numPrimitives;
     int numIndices;
     int numVertices;

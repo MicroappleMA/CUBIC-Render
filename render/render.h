@@ -8,6 +8,7 @@
 
 #pragma once
 
+#define STB_IMAGE_IMPLEMENTATION
 #define TINYGLTF_LOADER_IMPLEMENTATION
 #include "util/tiny_gltf_loader.h"
 #include "dataType.h"

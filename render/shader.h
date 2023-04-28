@@ -5,21 +5,25 @@
 #include "util/utilityCore.hpp"
 
 #include "dataType.h"
+#include "renderTool.h"
 
 
-__device__
-VertexOut vertexShader(const VertexIn &vert, const glm::mat4 &M, const glm::mat4 &V, const glm::mat4 &P)
+__device__ static
+VertexOut vertexShader(const VertexIn &in, const glm::mat4 &M, const glm::mat4 &V, const glm::mat4 &P)
 {
     VertexOut vertexOut;
 
-    vertexOut.objectPos = glm::vec4(vert.pos,1);
+    vertexOut.objectPos = glm::vec4(in.position, 1);
     vertexOut.worldPos = M * vertexOut.objectPos;
     vertexOut.viewPos = V * vertexOut.worldPos;
     vertexOut.clipPos = P * vertexOut.viewPos;
     vertexOut.clipPos /= vertexOut.clipPos.w;
-    vertexOut.objectNor = vert.nor;
+    vertexOut.objectNor = in.normal;
     vertexOut.worldNor = glm::transpose(glm::inverse(glm::mat3(M))) * vertexOut.objectNor;
     vertexOut.viewNor = glm::transpose(glm::inverse(glm::mat3(V))) * vertexOut.worldNor;
+
+    vertexOut.material = in.material;
+    vertexOut.tex[0] = in.tex[0];
 
     // windowPos is auto generate
 
@@ -32,24 +36,29 @@ VertexOut vertexShader(const VertexIn &vert, const glm::mat4 &M, const glm::mat4
     return vertexOut;
 }
 
-__device__
+__device__ static
 glm::vec3 fragmentShader(const Fragment& frag)
 {
     // Render Pass
     glm::vec3 color;
+    const VertexOut &in = frag.in;
 
-    switch (frag.material) {
-        case InValid:
+    switch (in.material) {
+        case Invalid:
             break;
-        case Debug:
+        case Depth:
             color = (1 - frag.depth) / 2 * glm::vec3(1,1,1);
             break;
-        case Direct:
-            color = frag.color;
+        case Debug:
+            color = frag.in.color;
+            break;
+        case Unlit:
+            color = sampleTex(in.tex[0].data, in.tex[0].width, in.tex[0].height, in.tex[0].uv);
+            // color = glm::vec3(in.tex[0].uv,0);
             break;
         case Lambert:
             glm::vec3 lightNor = {0.574, 0.574, 0.574}; // Use for temp test
-            color = frag.color * glm::dot(lightNor,frag.objectNor);
+            color = frag.color * glm::dot(lightNor,in.objectNor);
             break;
     }
 

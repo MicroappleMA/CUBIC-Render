@@ -394,6 +394,7 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
 
                     // You can only worry about this part once you started to
                     // implement textures for your rasterizer
+                    MaterialType materialType = Invalid;
                     TextureData* dev_diffuseTex = nullptr;
                     int diffuseTexWidth = 0;
                     int diffuseTexHeight = 0;
@@ -403,7 +404,7 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
 
                         if (mat.values.find("diffuse") != mat.values.end()) {
                             std::string diffuseTexName = mat.values.at("diffuse").string_value;
-                            if (scene.textures.find(diffuseTexName) != scene.textures.end()) {
+                            if (!diffuseTexName.empty() && scene.textures.find(diffuseTexName) != scene.textures.end()) {
                                 const tinygltf::Texture &tex = scene.textures.at(diffuseTexName);
                                 if (scene.images.find(tex.source) != scene.images.end()) {
                                     const tinygltf::Image &image = scene.images.at(tex.source);
@@ -416,6 +417,9 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
                                     diffuseTexHeight = image.height;
 
                                     checkCUDAError("Set Texture Image data");
+                                    printf("diffuse texture pic = %s\n", image.name.c_str());
+                                    materialType = Unlit;
+
                                 }
                             }
                         }
@@ -444,6 +448,7 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
                     primitiveVector.push_back(PrimitiveDevBufPointers{
                             primitive.mode,
                             primitiveType,
+                            materialType,
                             numPrimitives,
                             numIndices,
                             numVertices,

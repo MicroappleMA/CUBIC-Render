@@ -271,8 +271,7 @@ void initVAO(void) {
 
 
 GLuint initShader() {
-    const char *attribLocations[] = { "Position", "Tex" };
-    GLuint program = glslUtility::createDefaultProgram(attribLocations, 2);
+    GLuint program = glslUtility::createDefaultProgram(attributeLocations, 2);
     GLint location;
 
     glUseProgram(program);

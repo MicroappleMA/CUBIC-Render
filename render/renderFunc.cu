@@ -32,8 +32,14 @@ void _vertexTransform(
     int vid = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (vid < numVertices) {
 
+
         VertexIn in = {primitive.dev_position[vid],
-                       primitive.dev_normal[vid]};
+                       primitive.dev_normal[vid],
+                       primitive.materialType,
+                       {primitive.dev_diffuseTex,
+                        primitive.dev_texcoord0[vid],
+                        primitive.diffuseTexWidth,
+                        primitive.diffuseTexHeight}};
         VertexOut &out = primitive.dev_verticesOut[vid];
 
         out = vertexShader(in, M, V, P);
@@ -109,7 +115,8 @@ void _generateTileBuffer(int numPrimitives, Primitive* dev_primitives, Tile* dev
 
 }
 
-#define INTERPOLATE(out, in, coef, attri) {out.attri = in[0].attri * coef.x + in[1].attri * coef.y + in[2].attri * coef.z;}
+#define INTERPOLATE(frag, vert, coef, attri) {frag.in.attri = vert[0].attri * coef.x + vert[1].attri * coef.y + vert[2].attri * coef.z;}
+#define COPY(frag, vert, attri) {frag.in.attri = vert[0].attri;}
 
 __device__
 Fragment _generateFragment(const glm::vec3 &barycentricCoord, const Primitive &primitive)
@@ -118,21 +125,38 @@ Fragment _generateFragment(const glm::vec3 &barycentricCoord, const Primitive &p
                           primitive.v[1].viewPos.z,
                           primitive.v[2].viewPos.z};
     glm::vec3 coef = getInterpolationCoef(barycentricCoord, triViewZ);
-    Fragment buffer;
+    Fragment frag;
 
     // Implement Interpolation Here
     // Need to modify if the struct of Fragment changes
-    INTERPOLATE(buffer, primitive.v, coef, color);
-    INTERPOLATE(buffer, primitive.v, coef, objectPos);
-    INTERPOLATE(buffer, primitive.v, coef, worldPos);
-    INTERPOLATE(buffer, primitive.v, coef, viewPos);
-    INTERPOLATE(buffer, primitive.v, coef, clipPos);
-    INTERPOLATE(buffer, primitive.v, coef, windowPos);
-    INTERPOLATE(buffer, primitive.v, coef, objectNor);
-    INTERPOLATE(buffer, primitive.v, coef, worldNor);
-    INTERPOLATE(buffer, primitive.v, coef, viewNor);
+    INTERPOLATE(frag, primitive.v, coef, color);
+    INTERPOLATE(frag, primitive.v, coef, objectPos);
+    INTERPOLATE(frag, primitive.v, coef, worldPos);
+    INTERPOLATE(frag, primitive.v, coef, viewPos);
+    INTERPOLATE(frag, primitive.v, coef, clipPos);
+    INTERPOLATE(frag, primitive.v, coef, windowPos);
+    INTERPOLATE(frag, primitive.v, coef, objectNor);
+    INTERPOLATE(frag, primitive.v, coef, worldNor);
+    INTERPOLATE(frag, primitive.v, coef, viewNor);
+    COPY(frag, primitive.v, material);
+    for(int i=0; i<maxTaxNum; i++)
+    {
+        COPY(frag, primitive.v, tex[i].data);
+        COPY(frag, primitive.v, tex[i].width);
+        COPY(frag, primitive.v, tex[i].height);
+        INTERPOLATE(frag, primitive.v, coef, tex[i].uv);
+    }
 
-    return buffer;
+    return frag;
+}
+
+__device__
+void _initFragment(Fragment &frag)
+{
+    // Init Fragment Here
+    frag.depth = 1;
+    frag.color = {0,0,0};
+    frag.in.material = Invalid;
 }
 
 __global__
@@ -155,12 +179,7 @@ void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_f
     if(tileIdX>=maxTileNumX||tileIdY>=maxTileNumY) return;
     if(posX>=width||posY>=height) return;
 
-
-    // Init Fragment Here
-    tileFragment[tilePos].depth = 1;
-    tileFragment[tilePos].color = {0,0,0};
-    tileFragment[tilePos].material = InValid;
-
+    _initFragment(tileFragment[tilePos]);
 
     int maxPrimitiveIdIndex = glm::min(dev_tileBuffer[tileId].numPrimitives,maxPrimitivesPerTile);
     for(int primitiveIdIndex=0;primitiveIdIndex<maxPrimitiveIdIndex;primitiveIdIndex++)
@@ -178,7 +197,6 @@ void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_f
             {
                 tileFragment[tilePos] = _generateFragment(baryCoords, primitive);
                 tileFragment[tilePos].depth = depth;
-                tileFragment[tilePos].material = Direct;
             } // No need to use atomic because no data race happen
         }
         __syncthreads(); // Ensure all threads are rasterizing the same primitive

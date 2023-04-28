@@ -103,3 +103,34 @@ glm::vec3 getInterpolationCoef(const glm::vec3 &barycentricCoord, const glm::vec
             barycentricCoord.y * viewZ / triViewZ.y,
             barycentricCoord.z * viewZ / triViewZ.z};
 }
+
+__device__ static
+glm::vec3 _sampleTex(const TextureData *tex, const unsigned int &index)
+{
+    return {tex[index * 3] / 255.0f,
+            tex[index * 3 + 1] / 255.0f,
+            tex[index * 3 + 2] / 255.0f};
+}
+
+__device__ static
+glm::vec3 sampleTex(const TextureData *tex, const int &texWidth, const int &texHeight, const glm::vec2 &UV)
+{
+    float fw = (float)texWidth * (UV.x - glm::floor(UV.x));
+    float fh = (float)texHeight * (UV.y - glm::floor(UV.y));
+
+    int firstW = (int)(fw);
+    int firstH = (int)(fh);
+
+    int secondW = glm::min(firstW + 1, texWidth - 1);
+	int secondH = glm::min(firstH + 1, texHeight - 1);
+
+	float x_gap = fw - (float)firstW;
+	float y_gap = fh - (float)firstH;
+
+    glm::vec3 color1 = _sampleTex(tex,firstW + firstH * texWidth);
+    glm::vec3 color2 = _sampleTex(tex,secondW + firstH * texWidth);
+    glm::vec3 color3 = _sampleTex(tex,firstW + secondH * texWidth);
+    glm::vec3 color4 = _sampleTex(tex,secondW + secondH * texWidth);
+
+	return glm::mix(glm::mix(color1, color2, x_gap), glm::mix(color3, color4, x_gap), y_gap);
+}
