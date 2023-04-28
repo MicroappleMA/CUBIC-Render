@@ -65,18 +65,20 @@ set(UTIL_FILES
     "util/glslUtility.cpp"
     "util/tiny_gltf_loader.h")
 
-set(CUDA_FILES
-    "src/rasterize.cu"
-    "src/rasterize.h"
-    "src/rasterizeTools.h"
-    "src/shader.h"
-    "src/data.h")
+set(RENDER_FILES
+    "render/render.cu"
+    "render/render.h"
+    "render/renderFunc.cu"
+    "render/renderFunc.h"
+    "render/renderTool.h"
+    "render/shader.h"
+    "render/dataType.h")
 
 set(MAIN_FILES
-    "src/main.hpp"
-    "src/main.cpp")
+    "main/main.hpp"
+    "main/main.cpp")
 
-add_executable(${CMAKE_PROJECT_NAME} ${UTIL_FILES} ${CUDA_FILES} ${MAIN_FILES})
+add_executable(${CMAKE_PROJECT_NAME} ${UTIL_FILES} ${RENDER_FILES} ${MAIN_FILES})
 
 # CUDA linker options
 find_package(Threads REQUIRED)

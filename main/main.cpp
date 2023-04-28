@@ -6,13 +6,7 @@
  * @copyright University of Pennsylvania
  */
 
-
-
 #include "main.hpp"
-
-#define STB_IMAGE_IMPLEMENTATION
-#define TINYGLTF_LOADER_IMPLEMENTATION
-#include <util/tiny_gltf_loader.h>
 
 //-------------------------------
 //-------------MAIN--------------
@@ -64,6 +58,7 @@ int main(int argc, char **argv) {
 
 	if (!ret) {
         cout<<"Failed to parse glTF\n";
+        getchar();
 		return -1;
 	}
 
@@ -138,7 +133,7 @@ void runCuda() {
 	glm::mat4 MVP = P * MV;
 
     cudaGLMapBufferObject((void **)&dptr, pbo);
-	rasterize(dptr, M, V, P);
+	Render::getInstance().render(dptr, M, V, P);
     cudaGLUnmapBufferObject(pbo);
 
     frame++;
@@ -195,7 +190,7 @@ bool init(const tinygltf::Scene & scene) {
 	}
 
 
-	rasterizeSetBuffers(scene);
+	Render::getInstance().init(scene, width, height);
 
     GLuint passthroughProgram;
     passthroughProgram = initShader();
@@ -226,8 +221,6 @@ void initPBO() {
 void initCuda() {
     // Use device with highest Gflops/s
     cudaGLSetGLDevice(0);
-
-    rasterizeInit(width, height);
 
     // Clean up on program exit
     atexit(cleanupCuda);
@@ -321,7 +314,7 @@ void deleteTexture(GLuint *tex) {
 }
 
 void shut_down(int return_code) {
-    rasterizeFree();
+    Render::getInstance().free();
     cudaDeviceReset();
     exit(return_code);
 }

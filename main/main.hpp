@@ -15,15 +15,19 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
-#include <glm/glm.hpp>
-#include <util/glslUtility.hpp>
-#include <util/utilityCore.hpp>
 
-#include "rasterize.h"
+#define STB_IMAGE_IMPLEMENTATION
+#define TINYGLTF_LOADER_IMPLEMENTATION
+#include "util/tiny_gltf_loader.h"
+#include "util/glslUtility.hpp"
+#include "util/utilityCore.hpp"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtx/transform.hpp"
+#include "render/render.h"
 
 using namespace std;
 

@@ -1,10 +1,11 @@
 #pragma once
 
 #include <cmath>
-#include <glm/glm.hpp>
-#include <util/utilityCore.hpp>
+#include "external/include/glm/glm.hpp"
+#include "util/utilityCore.hpp"
 
-#include "data.h"
+#include "dataType.h"
+
 
 __device__
 VertexOut vertexShader(const VertexIn &vert, const glm::mat4 &M, const glm::mat4 &V, const glm::mat4 &P)
