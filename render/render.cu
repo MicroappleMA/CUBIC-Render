@@ -18,8 +18,8 @@
 #include "external/include/glm/gtx/transform.hpp"
 
 #include "dataType.h"
-#include "renderFunc.h"
 #include "renderTool.h"
+#include "renderFunc.h"
 #include "render.h"
 
 
@@ -131,8 +131,11 @@ void Render::free() {
             cudaFree(p->dev_indices);
             cudaFree(p->dev_position);
             cudaFree(p->dev_normal);
-            cudaFree(p->dev_texcoord0);
-            cudaFree(p->dev_diffuseTex);
+            cudaFree(p->dev_uv);
+            for(int i=0; i<maxTexNum; i++)
+            {
+                cudaFree(p->dev_tex[i].data);
+            }
 
             cudaFree(p->dev_verticesOut);
 
@@ -238,8 +241,8 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
 
                 const tinygltf::Mesh & mesh = scene.meshes.at(*itMeshName);
 
-                auto res = mesh2PrimitivesMap.insert(std::pair<std::string, std::vector<PrimitiveDevBufPointers>>(mesh.name, std::vector<PrimitiveDevBufPointers>()));
-                std::vector<PrimitiveDevBufPointers> & primitiveVector = (res.first)->second;
+                auto res = mesh2PrimitivesMap.insert(std::pair<std::string, std::vector<PrimitiveBuffer>>(mesh.name, std::vector<PrimitiveBuffer>()));
+                std::vector<PrimitiveBuffer> & primitiveVector = (res.first)->second;
 
                 // for each primitive
                 for (size_t i = 0; i < mesh.primitives.size(); i++) {
@@ -248,7 +251,7 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
                     if (primitive.indices.empty())
                         return;
 
-                    // TODO: add new attributes for your PrimitiveDevBufPointers when you add new attributes
+                    // TODO: add new attributes for your PrimitiveBuffer when you add new attributes
                     VertexIndex* dev_indices = nullptr;
                     glm::vec3* dev_position = nullptr;
                     glm::vec3* dev_normal = nullptr;
@@ -395,39 +398,27 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
                     // You can only worry about this part once you started to
                     // implement textures for your rasterizer
                     MaterialType materialType = Invalid;
-                    TextureData* dev_diffuseTex = nullptr;
-                    int diffuseTexWidth = 0;
-                    int diffuseTexHeight = 0;
+
+                    Tex diffuseTex{nullptr,0,0};
+                    Tex specularTex{nullptr,0,0};
+                    Tex normalTex{nullptr,0,0};
+                    Tex roughnessTex{nullptr,0,0};
+                    Tex emissionTex{nullptr,0,0};
+
+
                     if (!primitive.material.empty()) {
                         const tinygltf::Material &mat = scene.materials.at(primitive.material);
                         printf("material.name = %s\n", mat.name.c_str());
 
-                        if (mat.values.find("diffuse") != mat.values.end()) {
-                            std::string diffuseTexName = mat.values.at("diffuse").string_value;
-                            if (!diffuseTexName.empty() && scene.textures.find(diffuseTexName) != scene.textures.end()) {
-                                const tinygltf::Texture &tex = scene.textures.at(diffuseTexName);
-                                if (scene.images.find(tex.source) != scene.images.end()) {
-                                    const tinygltf::Image &image = scene.images.at(tex.source);
-
-                                    size_t s = image.image.size() * sizeof(TextureData);
-                                    cudaMalloc(&dev_diffuseTex, s);
-                                    cudaMemcpy(dev_diffuseTex, &image.image.at(0), s, cudaMemcpyHostToDevice);
-
-                                    diffuseTexWidth = image.width;
-                                    diffuseTexHeight = image.height;
-
-                                    checkCUDAError("Set Texture Image data");
-                                    printf("diffuse texture pic = %s\n", image.name.c_str());
-                                    materialType = Unlit;
-
-                                }
-                            }
-                        }
-
-                        // TODO: write your code for other materails
-                        // You may have to take a look at tinygltfloader
-                        // You can also use the above code loading diffuse material as a start point
+                        _initTex(scene, mat, "diffuse", diffuseTex);
+                        _initTex(scene, mat, "specular", specularTex);
+                        _initTex(scene, mat, "normal", normalTex);
+                        _initTex(scene, mat, "roughness", roughnessTex);
+                        _initTex(scene, mat, "emission", emissionTex);
                     }
+
+
+                    materialType = Tex0;
 
 
                     // ---------Node hierarchy transform--------
@@ -445,7 +436,7 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
 
                     // at the end of the for loop of primitive
                     // push dev pointers to map
-                    primitiveVector.push_back(PrimitiveDevBufPointers{
+                    primitiveVector.push_back(PrimitiveBuffer{
                             primitive.mode,
                             primitiveType,
                             materialType,
@@ -456,11 +447,13 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
                             dev_indices,
                             dev_position,
                             dev_normal,
-                            dev_texcoord0,
 
-                            dev_diffuseTex,
-                            diffuseTexWidth,
-                            diffuseTexHeight,
+                            dev_texcoord0,
+                            {diffuseTex,
+                             specularTex,
+                             normalTex,
+                             roughnessTex,
+                             emissionTex},
 
                             dev_vertexOut	//VertexOut
                     });

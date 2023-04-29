@@ -30,7 +30,7 @@ private:
     Render (const Render &) = delete;
     Render & operator=(const Render &) = delete;
 
-    std::map<std::string, std::vector<PrimitiveDevBufPointers>> mesh2PrimitivesMap;
+    std::map<std::string, std::vector<PrimitiveBuffer>> mesh2PrimitivesMap;
 
     int width = 0;
     int height = 0;

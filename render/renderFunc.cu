@@ -24,7 +24,7 @@
 __global__
 void _vertexTransform(
         int numVertices,
-        PrimitiveDevBufPointers primitive,
+        PrimitiveBuffer primitive,
         glm::mat4 M, glm::mat4 V, glm::mat4 P,
         int width, int height) {
 
@@ -35,23 +35,28 @@ void _vertexTransform(
         // Vertex Assembly
         VertexIn in = {primitive.dev_position[vid],
                        primitive.dev_normal[vid],
+                       primitive.dev_uv[vid],
                        primitive.materialType,
-                       {primitive.dev_diffuseTex,
-                        primitive.dev_texcoord0[vid],
-                        primitive.diffuseTexWidth,
-                        primitive.diffuseTexHeight}};
+                       primitive.dev_tex
+                       };
+
         VertexOut &out = primitive.dev_verticesOut[vid];
 
         out = vertexShader(in, M, V, P);
+
         out.windowPos = {(out.clipPos.x + 1.0f) * 0.5f * width,
                          (1.0f - out.clipPos.y) * 0.5f * height,
                          out.clipPos.z};
+
+        for(int i=0; i<maxTexNum; i++)
+            out.tex[i] = in.tex[i];
+        out.material = in.material;
     }
 }
 
 
 __global__
-void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveDevBufPointers primitive) {
+void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveBuffer primitive) {
 
     // index id
     int iid = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -139,12 +144,12 @@ Fragment _generateFragment(const glm::vec3 &barycentricCoord, const Primitive &p
     INTERPOLATE(frag, primitive.v, coef, worldNor);
     INTERPOLATE(frag, primitive.v, coef, viewNor);
     COPY(frag, primitive.v, material);
-    for(int i=0; i<maxTaxNum; i++)
+    for(int i=0; i < maxTexNum; i++)
     {
         COPY(frag, primitive.v, tex[i].data);
         COPY(frag, primitive.v, tex[i].width);
         COPY(frag, primitive.v, tex[i].height);
-        INTERPOLATE(frag, primitive.v, coef, tex[i].uv);
+        INTERPOLATE(frag, primitive.v, coef, uv);
     }
 
     return frag;
@@ -354,5 +359,28 @@ void _traverseNode (
 
     for (; it != itEnd; ++it) {
         _traverseNode(n2m, scene, *it, M);
+    }
+}
+
+void _initTex(const tinygltf::Scene & scene, const tinygltf::Material &mat, const std::string &keyword, Tex &texData)
+{
+    if (mat.values.find(keyword) != mat.values.end()) {
+        std::string texName = mat.values.at(keyword).string_value;
+        if (!texName.empty() && scene.textures.find(texName) != scene.textures.end()) {
+            const tinygltf::Texture &tex = scene.textures.at(texName);
+            if (scene.images.find(tex.source) != scene.images.end()) {
+                const tinygltf::Image &image = scene.images.at(tex.source);
+
+                size_t s = image.image.size() * sizeof(TextureData);
+                cudaMalloc(&(texData.data), s);
+                cudaMemcpy(texData.data, &image.image.at(0), s, cudaMemcpyHostToDevice);
+
+                texData.width = image.width;
+                texData.height = image.height;
+
+                checkCUDAError("Set Texture Image data");
+                printf("%s texture = %s\n", keyword.c_str(), image.name.c_str());
+            }
+        }
     }
 }

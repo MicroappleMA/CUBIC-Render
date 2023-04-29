@@ -21,11 +21,9 @@ VertexOut vertexShader(const VertexIn &in, const glm::mat4 &M, const glm::mat4 &
     vertexOut.objectNor = in.normal;
     vertexOut.worldNor = glm::transpose(glm::inverse(glm::mat3(M))) * vertexOut.objectNor;
     vertexOut.viewNor = glm::transpose(glm::inverse(glm::mat3(V))) * vertexOut.worldNor;
+    vertexOut.uv = in.uv;
 
-    vertexOut.material = in.material;
-    vertexOut.tex[0] = in.tex[0];
-
-    // windowPos is auto generate
+    // windowPos,material,tex are auto generate
 
     // TODO: Apply vertex transformation here
     // Multiply the MVP matrix for each vertex position, this will transform everything into clipping space
@@ -52,11 +50,11 @@ glm::vec3 fragmentShader(const Fragment& frag)
         case Debug:
             color = frag.in.color;
             break;
-        case TexUV:
-            color = glm::vec3(in.tex[0].uv,0);
+        case UV:
+            color = glm::vec3(in.uv,0);
             break;
-        case Unlit:
-            color = sampleTex(in.tex[0].data, in.tex[0].width, in.tex[0].height, in.tex[0].uv);
+        case Tex0:
+            color = sampleTex(in.tex[0], in.uv);
             break;
         case Lambert:
             glm::vec3 lightNor = {0.574, 0.574, 0.574}; // Use for temp test

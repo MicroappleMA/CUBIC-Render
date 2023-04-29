@@ -113,27 +113,27 @@ glm::vec3 _sampleTex(const TextureData *tex, const unsigned int &index)
 }
 
 __device__ static
-glm::vec3 sampleTex(const TextureData *tex, const int &texWidth, const int &texHeight, const glm::vec2 &UV)
+glm::vec3 sampleTex(const Tex &tex, const glm::vec2 &UV)
 {
-    if(UV.x<0 || UV.x>=1 || UV.y<0 || UV.y>=1)
+    if(tex.data==nullptr || UV.x<0 || UV.x>=1 || UV.y<0 || UV.y>=1)
         return {1,0,0}; // Ensure UV is valid
 
-    float w = (float)texWidth * (UV.x - glm::floor(UV.x));
-    float h = (float)texHeight * (UV.y - glm::floor(UV.y));
+    float w = (float)tex.width * (UV.x - glm::floor(UV.x));
+    float h = (float)tex.height * (UV.y - glm::floor(UV.y));
 
     int firstW = (int)(w);
     int firstH = (int)(h);
 
-    int secondW = glm::min(firstW + 1, texWidth - 1);
-	int secondH = glm::min(firstH + 1, texHeight - 1);
+    int secondW = glm::min(firstW + 1, tex.width - 1);
+	int secondH = glm::min(firstH + 1, tex.height - 1);
 
 	float x_gap = w - (float)firstW;
 	float y_gap = h - (float)firstH;
 
-    glm::vec3 color1 = _sampleTex(tex,firstW + firstH * texWidth);
-    glm::vec3 color2 = _sampleTex(tex,secondW + firstH * texWidth);
-    glm::vec3 color3 = _sampleTex(tex,firstW + secondH * texWidth);
-    glm::vec3 color4 = _sampleTex(tex,secondW + secondH * texWidth);
+    glm::vec3 color1 = _sampleTex(tex.data,firstW + firstH * tex.width);
+    glm::vec3 color2 = _sampleTex(tex.data,secondW + firstH * tex.width);
+    glm::vec3 color3 = _sampleTex(tex.data,firstW + secondH * tex.width);
+    glm::vec3 color4 = _sampleTex(tex.data,secondW + secondH * tex.width);
 
 	return glm::mix(glm::mix(color1, color2, x_gap),
                     glm::mix(color3, color4, x_gap),

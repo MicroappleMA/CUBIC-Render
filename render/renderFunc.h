@@ -7,12 +7,12 @@
 
 __global__
 void _vertexTransform(int numVertices,
-        PrimitiveDevBufPointers primitive,
-        glm::mat4 M, glm::mat4 V, glm::mat4 P,
-        int width, int height);
+                      PrimitiveBuffer primitive,
+                      glm::mat4 M, glm::mat4 V, glm::mat4 P,
+                      int width, int height);
 
 __global__
-void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveDevBufPointers primitive);
+void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveBuffer primitive);
 
 __global__
 void _generateTileBuffer(int numPrimitives, Primitive* dev_primitives, Tile* dev_tileBuffer, int width, int height, int tileSize);
@@ -43,3 +43,5 @@ void _traverseNode (
         const tinygltf::Scene & scene,
         const std::string & nodeString,
         const glm::mat4 & parentMatrix);
+
+void _initTex(const tinygltf::Scene & scene, const tinygltf::Material &mat, const std::string &keyword, Tex &texData);

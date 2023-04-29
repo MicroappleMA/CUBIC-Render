@@ -5,7 +5,7 @@
 static const unsigned int tileSize = 8;
 static const unsigned int maxPrimitivesPerTile = 1024;
 static const unsigned int defaultThreadPerBlock = 128;
-static const unsigned int maxTaxNum = 4;
+static const unsigned int maxTexNum = 5;
 
 typedef unsigned short VertexIndex;
 typedef unsigned char TextureData;
@@ -21,24 +21,24 @@ enum MaterialType{
     Invalid,
     Depth,
     Debug,
-    TexUV,
-    Unlit,
+    UV,
+    Tex0,
     Lambert
 };
 
 struct Tex
 {
     TextureData *data;
-    glm::vec2 uv;
     int width;
     int height;
 };
 
 struct VertexIn {
-    glm::vec3 position;
-    glm::vec3 normal;
-    MaterialType material;
-    Tex tex[maxTaxNum];
+    glm::vec3 &position;
+    glm::vec3 &normal;
+    glm::vec2 &uv;
+    MaterialType &material;
+    Tex *tex;
 };
 
 struct VertexOut {
@@ -55,7 +55,8 @@ struct VertexOut {
     // The attributes listed below might be useful,
     // but always feel free to modify on your own
 
-    Tex tex[maxTaxNum];
+    glm::vec2 uv;
+    Tex tex[maxTexNum];
     MaterialType material;
 };
 
@@ -89,7 +90,7 @@ struct SceneInfo {
     unsigned int numPrimitives;
 };
 
-struct PrimitiveDevBufPointers {
+struct PrimitiveBuffer {
     int primitiveMode;	//from tinygltfloader macro
     PrimitiveType primitiveType;
     MaterialType materialType;
@@ -101,15 +102,10 @@ struct PrimitiveDevBufPointers {
     VertexIndex *dev_indices;
     glm::vec3 *dev_position;
     glm::vec3 *dev_normal;
-    glm::vec2 *dev_texcoord0;
+    glm::vec2 *dev_uv;
 
     // Materials, add more attributes when needed
-    TextureData *dev_diffuseTex;
-    int diffuseTexWidth;
-    int diffuseTexHeight;
-    // TextureData* dev_specularTex;
-    // TextureData* dev_normalTex;
-    // ...
+    Tex dev_tex[maxTexNum];
 
     // Vertex Out, vertex used for rasterization, this is changing every frame
     VertexOut *dev_verticesOut;
