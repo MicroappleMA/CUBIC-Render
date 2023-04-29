@@ -52,9 +52,11 @@ glm::vec3 fragmentShader(const Fragment& frag)
         case Debug:
             color = frag.in.color;
             break;
+        case TexUV:
+            color = glm::vec3(in.tex[0].uv,0);
+            break;
         case Unlit:
             color = sampleTex(in.tex[0].data, in.tex[0].width, in.tex[0].height, in.tex[0].uv);
-            // color = glm::vec3(in.tex[0].uv,0);
             break;
         case Lambert:
             glm::vec3 lightNor = {0.574, 0.574, 0.574}; // Use for temp test

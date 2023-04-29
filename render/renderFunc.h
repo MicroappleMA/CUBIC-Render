@@ -32,8 +32,8 @@ void _deviceBufferCopy(int N, BufferByte* dev_dst, const BufferByte* dev_src, in
 __global__
 void _nodeMatrixTransform(
         int numVertices,
-        VertexAttributePosition* position,
-        VertexAttributeNormal* normal,
+        glm::vec3* position,
+        glm::vec3* normal,
         glm::mat4 MV, glm::mat3 MV_normal);
 
 glm::mat4 _getMatrixFromNodeMatrixVector(const tinygltf::Node & n);

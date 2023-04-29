@@ -1,0 +1,293 @@
+{
+    "accessors": {
+        "accessors_accessor_buffer_Joh_final2_0": {
+            "bufferView": "bufferViews_bufferView_buffer_Joh_final2_0",
+            "byteOffset": 0,
+            "byteStride": 32,
+            "componentType": 5126,
+            "count": 8221,
+            "max": [
+                2.6756749153137207,
+                6.954517841339111,
+                3.342974901199341
+            ],
+            "min": [
+                -4.205973148345947,
+                -0.2823689877986908,
+                -3.271090030670166
+            ],
+            "name": "accessor_buffer_Joh_final2_0",
+            "type": "VEC3"
+        },
+        "accessors_accessor_buffer_Joh_final2_1": {
+            "bufferView": "bufferViews_bufferView_buffer_Joh_final2_0",
+            "byteOffset": 12,
+            "byteStride": 32,
+            "componentType": 5126,
+            "count": 8221,
+            "max": [
+                0.9999803900718689,
+                0.9994240403175354,
+                0.9998401403427124
+            ],
+            "min": [
+                -0.9997881054878235,
+                -0.9997243285179138,
+                -0.9998414516448975
+            ],
+            "name": "accessor_buffer_Joh_final2_1",
+            "type": "VEC3"
+        },
+        "accessors_accessor_buffer_Joh_final2_2": {
+            "bufferView": "bufferViews_bufferView_buffer_Joh_final2_0",
+            "byteOffset": 24,
+            "byteStride": 32,
+            "componentType": 5126,
+            "count": 8221,
+            "max": [
+                0.9946290254592896,
+                0.9965819716453552
+            ],
+            "min": [
+                0.0001630000042496249,
+                0.006347999908030033
+            ],
+            "name": "accessor_buffer_Joh_final2_2",
+            "type": "VEC2"
+        },
+        "accessors_accessor_buffer_Joh_final2_3": {
+            "bufferView": "bufferViews_bufferView_buffer_Joh_final2_1",
+            "byteOffset": 0,
+            "byteStride": 2,
+            "componentType": 5123,
+            "count": 32136,
+            "max": [
+                8220
+            ],
+            "min": [
+                0
+            ],
+            "name": "accessor_buffer_Joh_final2_3",
+            "type": "SCALAR"
+        }
+    },
+    "asset": {
+        "profile": {
+            "api": "OpenGL",
+            "version": "3.0"
+        },
+        "version": "1.0"
+    },
+    "bufferViews": {
+        "bufferViews_bufferView_buffer_Joh_final2_0": {
+            "buffer": "buffers_buffer_combined",
+            "byteLength": 263072,
+            "byteOffset": 0,
+            "name": "bufferView_buffer_Joh_final2_0",
+            "target": 34962
+        },
+        "bufferViews_bufferView_buffer_Joh_final2_1": {
+            "buffer": "buffers_buffer_combined",
+            "byteLength": 64272,
+            "byteOffset": 263072,
+            "name": "bufferView_buffer_Joh_final2_1",
+            "target": 34963
+        }
+    },
+    "buffers": {
+        "buffers_buffer_combined": {
+            "byteLength": 327344,
+            "name": "buffer_combined",
+            "type": "arraybuffer",
+            "uri": "buffer_combined.bin"
+        }
+    },
+    "glExtensionsUsed": [],
+    "images": {
+        "file0": {
+            "name": "file0",
+            "uri": "storm_hero_d3crusaderf_base_diff.png"
+        },
+        "file1": {
+            "name": "file1",
+            "uri": "storm_hero_d3crusaderf_base_spec.png"
+        },
+        "file2": {
+            "name": "file2",
+            "uri": "storm_hero_d3crusaderf_base_roughness.png"
+        },
+        "file3": {
+            "name": "file3",
+            "uri": "storm_hero_d3crusaderf_base_norm.png"
+        },
+         "file4": {
+            "name": "file4",
+            "uri": "storm_hero_d3crusaderf_base_emis.png"
+        },
+         "file5": {
+            "name": "file5",
+            "uri": "outside.png"
+        }
+       
+    },
+    "materials": {
+        "materials_initialShadingGroup":
+         {
+            "name": "initialShadingGroup",
+            "values": {
+                "ambient": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "diffuse": "texture_file0",
+                "emission": "texture_file4",
+                "specular" : "texture_file1",           
+                "roughness" : "texture_file2",
+                "normal": "texture_file3",
+                "environment": "texture_file5"
+            }
+        }
+    },
+    "meshes": {
+        "meshes_Joh_final2": {
+            "name": "Joh_final2",
+            "primitives": [
+                {
+                    "attributes": {
+                        "NORMAL": "accessors_accessor_buffer_Joh_final2_1",
+                        "POSITION": "accessors_accessor_buffer_Joh_final2_0",
+                        "TEXCOORD_0": "accessors_accessor_buffer_Joh_final2_2"
+                    },
+                    "indices": "accessors_accessor_buffer_Joh_final2_3",
+                    "material": "materials_initialShadingGroup",
+                    "mode": 4
+                }
+            ]
+        }
+    },
+    "nodes": {
+        "nodes_Joh_final2": {
+            "meshes": [
+                "meshes_Joh_final2"
+            ],
+            "name": "Joh_final2",
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "scale": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "translation": [
+                0.0,
+                -1.5,
+                0.0
+            ]
+        },
+        "nodes_Scene_root": {
+            "children": [
+                "nodes_Joh_final2"
+            ],
+            "matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -1.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "name": "Scene_root"
+        }
+    },
+    "samplers": {
+        "samplers_default": {
+            "name": "default"
+        }
+    },
+    "scene": "scenes_Scene",
+    "scenes": {
+        "scenes_Scene": {
+            "extras": {
+                "active_camera": null,
+                "background_color": [
+                    0.05087608844041824,
+                    0.05087608844041824,
+                    0.05087608844041824
+                ],
+                "frames_per_second": 24
+            },
+            "name": "Scene",
+            "nodes": [
+                "nodes_Joh_final2",
+                "nodes_Scene_root"
+            ]
+        }
+    }
+    ,
+    "textures": {
+        "texture_file0": {
+            "format": 6408,
+            "internalFormat": 6408,
+            "sampler": "sampler_0",
+            "source": "file0",
+            "target": 3553,
+            "type": 5121
+        },
+        "texture_file1": {
+            "format": 6408,
+            "internalFormat": 6408,
+            "sampler": "sampler_0",
+            "source": "file1",
+            "target": 3553,
+            "type": 5121
+        },
+        "texture_file2": {
+            "format": 6408,
+            "internalFormat": 6408,
+            "sampler": "sampler_0",
+            "source": "file2",
+            "target": 3553,
+            "type": 5121
+        },
+        "texture_file3": {
+            "format": 6408,
+            "internalFormat": 6408,
+            "sampler": "sampler_0",
+            "source": "file3",
+            "target": 3553,
+            "type": 5121
+        },
+        "texture_file4": {
+            "format": 6408,
+            "internalFormat": 6408,
+            "sampler": "sampler_0",
+            "source": "file4",
+            "target": 3553,
+            "type": 5121
+        },
+        "texture_file5": {
+            "format": 6408,
+            "internalFormat": 6408,
+            "sampler": "sampler_0",
+            "source": "file5",
+            "target": 3553,
+            "type": 5121
+        }
+    }
+}

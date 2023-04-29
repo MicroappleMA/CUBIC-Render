@@ -7,11 +7,7 @@ static const unsigned int maxPrimitivesPerTile = 1024;
 static const unsigned int defaultThreadPerBlock = 128;
 static const unsigned int maxTaxNum = 4;
 
-
 typedef unsigned short VertexIndex;
-typedef glm::vec3 VertexAttributePosition;
-typedef glm::vec3 VertexAttributeNormal;
-typedef glm::vec2 VertexAttributeTexcoord;
 typedef unsigned char TextureData;
 typedef unsigned char BufferByte;
 
@@ -25,6 +21,7 @@ enum MaterialType{
     Invalid,
     Depth,
     Debug,
+    TexUV,
     Unlit,
     Lambert
 };
@@ -101,13 +98,13 @@ struct PrimitiveDevBufPointers {
     int numVertices;
 
     // Vertex In, const after loaded
-    VertexIndex* dev_indices;
-    VertexAttributePosition* dev_position;
-    VertexAttributeNormal* dev_normal;
-    VertexAttributeTexcoord* dev_texcoord0;
+    VertexIndex *dev_indices;
+    glm::vec3 *dev_position;
+    glm::vec3 *dev_normal;
+    glm::vec2 *dev_texcoord0;
 
     // Materials, add more attributes when needed
-    TextureData* dev_diffuseTex;
+    TextureData *dev_diffuseTex;
     int diffuseTexWidth;
     int diffuseTexHeight;
     // TextureData* dev_specularTex;
@@ -115,7 +112,7 @@ struct PrimitiveDevBufPointers {
     // ...
 
     // Vertex Out, vertex used for rasterization, this is changing every frame
-    VertexOut* dev_verticesOut;
+    VertexOut *dev_verticesOut;
 
     // TODO: add more attributes when needed
 };

@@ -250,9 +250,9 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
 
                     // TODO: add new attributes for your PrimitiveDevBufPointers when you add new attributes
                     VertexIndex* dev_indices = nullptr;
-                    VertexAttributePosition* dev_position = nullptr;
-                    VertexAttributeNormal* dev_normal = nullptr;
-                    VertexAttributeTexcoord* dev_texcoord0 = nullptr;
+                    glm::vec3* dev_position = nullptr;
+                    glm::vec3* dev_normal = nullptr;
+                    glm::vec2* dev_texcoord0 = nullptr;
 
                     // ----------Indices-------------
 
@@ -353,15 +353,15 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
                         // We assume the glTF model attribute type are 5126(FLOAT) here
 
                         if (it->first.compare("POSITION") == 0) {
-                            componentTypeByteSize = sizeof(VertexAttributePosition) / n;
+                            componentTypeByteSize = sizeof(glm::vec3) / n;
                             dev_attribute = (BufferByte**)&dev_position;
                         }
                         else if (it->first.compare("NORMAL") == 0) {
-                            componentTypeByteSize = sizeof(VertexAttributeNormal) / n;
+                            componentTypeByteSize = sizeof(glm::vec3) / n;
                             dev_attribute = (BufferByte**)&dev_normal;
                         }
                         else if (it->first.compare("TEXCOORD_0") == 0) {
-                            componentTypeByteSize = sizeof(VertexAttributeTexcoord) / n;
+                            componentTypeByteSize = sizeof(glm::vec2) / n;
                             dev_attribute = (BufferByte**)&dev_texcoord0;
                         }
 

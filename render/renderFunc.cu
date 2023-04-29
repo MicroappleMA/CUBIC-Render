@@ -11,9 +11,9 @@
 #include "external/include/glm/gtc/quaternion.hpp"
 #include "external/include/glm/gtx/transform.hpp"
 
-#include "shader.h"
 #include "dataType.h"
 #include "renderTool.h"
+#include "shader.h"
 #include "renderFunc.h"
 
 
@@ -32,7 +32,7 @@ void _vertexTransform(
     int vid = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (vid < numVertices) {
 
-
+        // Vertex Assembly
         VertexIn in = {primitive.dev_position[vid],
                        primitive.dev_normal[vid],
                        primitive.materialType,
@@ -285,8 +285,8 @@ void _deviceBufferCopy(int N, BufferByte* dev_dst, const BufferByte* dev_src, in
 __global__
 void _nodeMatrixTransform(
         int numVertices,
-        VertexAttributePosition* position,
-        VertexAttributeNormal* normal,
+        glm::vec3* position,
+        glm::vec3* normal,
         glm::mat4 MV, glm::mat3 MV_normal) {
 
     // vertex id
