@@ -24,13 +24,13 @@ public:
     void render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P);
     void free();
 
+    MaterialType overrideMaterial = Invalid;
+
 private:
     Render () = default;
     ~Render () = default;
     Render (const Render &) = delete;
     Render & operator=(const Render &) = delete;
-
-    std::map<std::string, std::vector<PrimitiveBuffer>> mesh2PrimitivesMap;
 
     int width = 0;
     int height = 0;

@@ -18,12 +18,12 @@ enum PrimitiveType{
 };
 
 enum MaterialType{
-    Invalid,
-    Depth,
-    Debug,
-    UV,
-    Tex0,
-    Lambert
+    Invalid = 0,
+    Depth = 1,
+    Debug = 2,
+    UV = 3,
+    Tex0 = 4,
+    Normal = 5
 };
 
 struct Tex
@@ -71,23 +71,11 @@ struct Fragment {
     VertexOut in;
 
     // TODO: add new attributes to your Fragment
-    // The attributes listed below might be useful,
-    // but always feel free to modify on your own
-
-    // glm::vec3 eyePos;	// eye space position used for shading
-    // glm::vec3 eyeNor;
-    // VertexAttributeTexcoord texcoord0;
-    // TextureData* dev_diffuseTex;
-    // ...
 };
 
 struct Tile {
     unsigned int numPrimitives;
     unsigned int primitiveId[maxPrimitivesPerTile];
-};
-
-struct SceneInfo {
-    unsigned int numPrimitives;
 };
 
 struct PrimitiveBuffer {
@@ -111,6 +99,11 @@ struct PrimitiveBuffer {
     VertexOut *dev_verticesOut;
 
     // TODO: add more attributes when needed
+};
+
+struct SceneInfo {
+    unsigned int numPrimitives;
+    std::map<std::string, std::vector<PrimitiveBuffer>> mesh2PrimitivesMap;
 };
 
 struct AABB {

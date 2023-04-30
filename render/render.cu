@@ -39,8 +39,8 @@ void Render::render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const
         int curPrimitiveBeginId = 0; // change static to non-static
 		dim3 numThreadsPerBlock(defaultThreadPerBlock);
 
-		auto it = mesh2PrimitivesMap.begin();
-		auto itEnd = mesh2PrimitivesMap.end();
+		auto it = sceneInfo.mesh2PrimitivesMap.begin();
+		auto itEnd = sceneInfo.mesh2PrimitivesMap.end();
 
 		for (; it != itEnd; ++it) {
 			auto p = (it->second).begin();	// each primitive
@@ -102,7 +102,7 @@ void Render::render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const
     cudaMemset(dev_framebuffer, 0, width * height * sizeof(glm::vec3));
 
     // Copy depthbuffer colors into framebuffer
-	_fragmentShading<<<blockCount2d, blockSize2d>>>(width, height, dev_fragmentBuffer, dev_framebuffer);
+	_fragmentShading<<<blockCount2d, blockSize2d>>>(dev_framebuffer, dev_fragmentBuffer, overrideMaterial, width, height);
 	checkCUDAError("fragment shader");
 
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
@@ -124,8 +124,8 @@ void Render::free() {
 
     // deconstruct primitives attribute/indices device buffer
 
-    auto it(mesh2PrimitivesMap.begin());
-    auto itEnd(mesh2PrimitivesMap.end());
+    auto it(sceneInfo.mesh2PrimitivesMap.begin());
+    auto itEnd(sceneInfo.mesh2PrimitivesMap.end());
     for (; it != itEnd; ++it) {
         for (auto p = it->second.begin(); p != it->second.end(); ++p) {
             cudaFree(p->dev_indices);
@@ -241,7 +241,7 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
 
                 const tinygltf::Mesh & mesh = scene.meshes.at(*itMeshName);
 
-                auto res = mesh2PrimitivesMap.insert(std::pair<std::string, std::vector<PrimitiveBuffer>>(mesh.name, std::vector<PrimitiveBuffer>()));
+                auto res = sceneInfo.mesh2PrimitivesMap.insert(std::pair<std::string, std::vector<PrimitiveBuffer>>(mesh.name, std::vector<PrimitiveBuffer>()));
                 std::vector<PrimitiveBuffer> & primitiveVector = (res.first)->second;
 
                 // for each primitive

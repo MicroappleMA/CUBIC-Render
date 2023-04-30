@@ -326,9 +326,22 @@ void errorCallback(int error, const char *description) {
     fputs(description, stderr);
 }
 
+// Index must in range[0,9]
+#define BIND_MATERIAL_KEY(index) \
+{if (key == GLFW_KEY_0 + (index)) {Render::getInstance().overrideMaterial = (MaterialType)(index); }}
+
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
+    if (action == GLFW_PRESS)
+    {
+        if (key == GLFW_KEY_ESCAPE) {
+            glfwSetWindowShouldClose(window, GL_TRUE);
+        }
+        BIND_MATERIAL_KEY(0);
+        BIND_MATERIAL_KEY(1);
+        BIND_MATERIAL_KEY(2);
+        BIND_MATERIAL_KEY(3);
+        BIND_MATERIAL_KEY(4);
+        BIND_MATERIAL_KEY(5);
     }
 }
 
