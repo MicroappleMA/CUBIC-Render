@@ -57,11 +57,11 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
             color = in.objectNor;
             break;
         case Tex0:
-            color = sampleTex(in.tex[0], in.uv);
+            color = sampleTex2d(in.tex[0], in.uv);
             break;
         case PBR:
             // glm::vec3 lightNor = light[0].direction;
-            // color = sampleTex(in.tex[0], in.uv) * glm::dot(lightNor,in.worldNor);
+            // color = sampleTex2d(in.tex[0], in.uv) * glm::dot(lightNor,in.worldNor);
             for (int i = 0; i < lightNum; i++)
             {
                 glm::vec3 LightVec = glm::normalize(light[i].direction);
@@ -75,10 +75,11 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
 
                 glm::vec3 specularTerm = glm::vec3(0.0f);
 
-                glm::vec3 diffuseTex = sampleTex(in.tex[0],in.uv);
-                glm::vec3 specularTex = sampleTex(in.tex[1],in.uv);
-                glm::vec3 roughnessTex = sampleTex(in.tex[3],in.uv);
-                glm::vec3 emissionTex = sampleTex(in.tex[4],in.uv);
+                glm::vec3 diffuseTex = sampleTex2d(in.tex[0], in.uv);
+                glm::vec3 specularTex = sampleTex2d(in.tex[1], in.uv);
+                glm::vec3 roughnessTex = sampleTex2d(in.tex[3], in.uv);
+                glm::vec3 emissionTex = sampleTex2d(in.tex[4], in.uv);
+                glm::vec3 environmentTex = sampleTexCubemap(in.tex[5], ReflectVec);
 
                 float NoL = glm::dot(LightVec, NormalVec);
 
@@ -94,15 +95,12 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
 
                 if (NoL > 0.0f)
                 {
-                    specularTerm = GGX_Spec(NormalVec, HalfVec, roughness, specularTex, LightingFunGGX_FV(LoH, roughness)) *energyConservation;
+                    specularTerm = pbrGGX_Spec(NormalVec, HalfVec, roughness, specularTex, pbrGGX_FV(LoH, roughness)) * energyConservation;
                     color += (diffuseTex + specularTerm) * NoL * glm::vec3(light[i].color) * light[i].intensity;
                 }
 
                 // TODO: Support IBL
-                // glm::vec3 envColor = getEnvTextColor(thisFragment.envTexWidth, thisFragment.envTexHeight, ReflectVec, thisFragment.dev_envTex);
-                color += diffuseTex * energyConservation * metallic;
-
-                color += emissionTex;
+                color += diffuseTex * environmentTex * energyConservation * metallic + emissionTex;
             }
             break;
     }

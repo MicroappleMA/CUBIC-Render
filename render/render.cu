@@ -429,6 +429,7 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
                     Tex normalTex{nullptr,0,0};
                     Tex roughnessTex{nullptr,0,0};
                     Tex emissionTex{nullptr,0,0};
+                    Tex environmentTex{nullptr,0,0};
 
 
                     if (!primitive.material.empty()) {
@@ -440,6 +441,7 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
                         _initTex(scene, mat, "normal", normalTex);
                         _initTex(scene, mat, "roughness", roughnessTex);
                         _initTex(scene, mat, "emission", emissionTex);
+                        _initTex(scene, mat, "environment", environmentTex);
                     }
 
                     // Generate material info according to texture;
@@ -483,7 +485,8 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
                              specularTex,
                              normalTex,
                              roughnessTex,
-                             emissionTex},
+                             emissionTex,
+                             environmentTex},
 
                             dev_vertexOut	//VertexOut
                     });

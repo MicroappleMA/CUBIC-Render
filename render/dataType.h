@@ -5,7 +5,7 @@
 static const unsigned int tileSize = 8;
 static const unsigned int maxPrimitivesPerTile = 1024;
 static const unsigned int defaultThreadPerBlock = 128;
-static const unsigned int maxTexNum = 5;
+static const unsigned int maxTexNum = 6;
 
 typedef unsigned short VertexIndex;
 typedef unsigned char TextureData;
