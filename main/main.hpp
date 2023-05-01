@@ -24,6 +24,7 @@
 #include "util/tiny_gltf_loader.h"
 #include "util/glslUtility.hpp"
 #include "util/utilityCore.hpp"
+#include "util/json.hpp"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtx/transform.hpp"

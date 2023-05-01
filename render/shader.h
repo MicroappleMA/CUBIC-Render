@@ -47,17 +47,21 @@ glm::vec3 fragmentShader(const Fragment& frag)
         case Depth:
             color = (1 - frag.depth) / 2 * glm::vec3(1,1,1);
             break;
-        case Debug:
+        case Mesh:
             color = frag.in.color;
             break;
         case UV:
             color = glm::vec3(in.uv,0);
             break;
+        case Normal:
+            color = in.objectNor;
+            break;
         case Tex0:
             color = sampleTex(in.tex[0], in.uv);
             break;
-        case Normal:
-            color = in.objectNor;
+        case PBR:
+            glm::vec3 lightNor = {0.574, 0.574, 0.574}; // Use for temp test
+            color = sampleTex(in.tex[0], in.uv) * glm::dot(lightNor,in.objectNor);
             break;
     }
 

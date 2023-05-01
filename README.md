@@ -18,4 +18,5 @@ project, and we will not be able to grade you without a good README.
 ### Credits
 
 * [tinygltfloader](https://github.com/syoyo/tinygltfloader) by [@soyoyo](https://github.com/syoyo)
+* [json](https://github.com/nlohmann/json) by [@nlohmann](https://github.com/nlohmann)
 * [glTF Sample Models](https://github.com/KhronosGroup/glTF/blob/master/sampleModels/README.md)

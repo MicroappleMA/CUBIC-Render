@@ -417,8 +417,13 @@ void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
                         _initTex(scene, mat, "emission", emissionTex);
                     }
 
-
-                    materialType = Tex0;
+                    // Generate material info according to texture;
+                    if (diffuseTex.data && specularTex.data && normalTex.data && roughnessTex.data)
+                        materialType = PBR;
+                    else if (diffuseTex.data)
+                        materialType = Tex0;
+                    else
+                        materialType = Mesh;
 
 
                     // ---------Node hierarchy transform--------

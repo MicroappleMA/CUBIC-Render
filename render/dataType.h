@@ -20,10 +20,11 @@ enum PrimitiveType{
 enum MaterialType{
     Invalid = 0,
     Depth = 1,
-    Debug = 2,
+    Mesh = 2,
     UV = 3,
-    Tex0 = 4,
-    Normal = 5
+    Normal = 4,
+    Tex0 = 5,
+    PBR = 6
 };
 
 struct Tex

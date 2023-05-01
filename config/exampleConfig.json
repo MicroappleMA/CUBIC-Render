@@ -1,0 +1,23 @@
+{
+  "width": 1000,
+  "height": 1000,
+  "model": "./model.gltf",
+  "lights": [
+    {
+      "type": "directional",
+      "direction": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    {
+      "type": "point",
+      "position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    }
+  ]
+}

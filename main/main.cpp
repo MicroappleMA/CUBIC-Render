@@ -342,6 +342,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         BIND_MATERIAL_KEY(3);
         BIND_MATERIAL_KEY(4);
         BIND_MATERIAL_KEY(5);
+        BIND_MATERIAL_KEY(6);
     }
 }
 
