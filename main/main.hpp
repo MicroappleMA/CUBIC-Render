@@ -52,8 +52,8 @@ GLFWwindow *window;
 //----------CUDA STUFF-----------
 //-------------------------------
 
-int width = 800;
-int height = 800;
+int width = 0;
+int height = 0;
 
 //-------------------------------
 //-------------MAIN--------------
@@ -70,7 +70,7 @@ void runCuda();
 //-------------------------------
 //----------SETUP STUFF----------
 //-------------------------------
-bool init(const tinygltf::Scene & scene);
+bool init(const tinygltf::Scene & scene, const vector<Light> & light);
 void initPBO();
 void initCuda();
 void initTextures();

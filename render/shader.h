@@ -35,7 +35,7 @@ VertexOut vertexShader(const VertexIn &in, const glm::mat4 &M, const glm::mat4 &
 }
 
 __device__ static
-glm::vec3 fragmentShader(const Fragment& frag)
+glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightNum)
 {
     // Render Pass
     glm::vec3 color;
@@ -60,8 +60,50 @@ glm::vec3 fragmentShader(const Fragment& frag)
             color = sampleTex(in.tex[0], in.uv);
             break;
         case PBR:
-            glm::vec3 lightNor = {0.574, 0.574, 0.574}; // Use for temp test
-            color = sampleTex(in.tex[0], in.uv) * glm::dot(lightNor,in.objectNor);
+            // glm::vec3 lightNor = light[0].direction;
+            // color = sampleTex(in.tex[0], in.uv) * glm::dot(lightNor,in.worldNor);
+            for (int i = 0; i < lightNum; i++)
+            {
+                glm::vec3 LightVec = glm::normalize(light[i].direction);
+                glm::vec3 ViewVec = glm::vec3(0.0f, 0.0f, 1.0f);
+
+                glm::vec3 HalfVec = glm::normalize(ViewVec + LightVec);
+                glm::vec3 NormalVec = in.worldNor; // TODO: Use normal texture
+
+                glm::vec3 ReflectVec = -glm::reflect(ViewVec, NormalVec);
+
+
+                glm::vec3 specularTerm = glm::vec3(0.0f);
+
+                glm::vec3 diffuseTex = sampleTex(in.tex[0],in.uv);
+                glm::vec3 specularTex = sampleTex(in.tex[1],in.uv);
+                glm::vec3 roughnessTex = sampleTex(in.tex[3],in.uv);
+                glm::vec3 emissionTex = sampleTex(in.tex[4],in.uv);
+
+                float NoL = glm::dot(LightVec, NormalVec);
+
+
+                float roughness = glm::clamp(roughnessTex.x, 0.05f, 1.0f);
+                float metallic = roughnessTex.y;
+
+                float LoH = glm::clamp(glm::dot(LightVec, HalfVec), 0.0f, 1.0f);
+                float NoV = glm::clamp(glm::dot(NormalVec, ViewVec), 0.0f, 1.0f);
+
+
+                float energyConservation = 1.0f - roughness;
+
+                if (NoL > 0.0f)
+                {
+                    specularTerm = GGX_Spec(NormalVec, HalfVec, roughness, specularTex, LightingFunGGX_FV(LoH, roughness)) *energyConservation;
+                    color += (diffuseTex + specularTerm) * NoL * glm::vec3(light[i].color) * light[i].intensity;
+                }
+
+                // TODO: Support IBL
+                // glm::vec3 envColor = getEnvTextColor(thisFragment.envTexWidth, thisFragment.envTexHeight, ReflectVec, thisFragment.dev_envTex);
+                color += diffuseTex * energyConservation * metallic;
+
+                color += emissionTex;
+            }
             break;
     }
 

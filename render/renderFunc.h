@@ -21,7 +21,7 @@ __global__
 void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_fragmentBuffer, int width, int height, int tileSize);
 
 __global__
-void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, MaterialType overrideMaterial, int w, int h);
+void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *light, unsigned int lightNum, MaterialType overrideMaterial, int w, int h);
 
 __global__
 void _copyImageToPBO(uchar4 *pbo, int w, int h, glm::vec3 *image);

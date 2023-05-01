@@ -139,3 +139,48 @@ glm::vec3 sampleTex(const Tex &tex, const glm::vec2 &UV)
                     glm::mix(color3, color4, x_gap),
                     y_gap);
 }
+
+__device__ static
+glm::vec2 LightingFunGGX_FV(float dotLH, float roughness)
+{
+    float alpha = roughness*roughness;
+
+    //F
+    float F_a, F_b;
+    float dotLH5 = glm::pow(glm::clamp(1.0f - dotLH, 0.0f, 1.0f), 5.0f);
+    F_a = 1.0f;
+    F_b = dotLH5;
+
+    //V
+    float vis;
+    float k = alpha * 0.5f;
+    float k2 = k*k;
+    float invK2 = 1.0f - k2;
+    vis = 1.0f/(dotLH*dotLH*invK2 + k2);
+
+    return glm::vec2((F_a - F_b)*vis, F_b*vis);
+}
+
+__device__ static
+float LightingFuncGGX_D(float dotNH, float roughness)
+{
+    float alpha = roughness*roughness;
+    float alphaSqr = alpha*alpha;
+    float denom = dotNH * dotNH * (alphaSqr - 1.0f) + 1.0f;
+
+    return alphaSqr / (PI*denom*denom);
+}
+
+__device__ static
+glm::vec3 GGX_Spec(glm::vec3 Normal, glm::vec3 HalfVec, float Roughness, glm::vec3 SpecularColor, glm::vec2 paraFV)
+{
+    float NoH = glm::clamp(glm::dot(Normal, HalfVec), 0.0f, 1.0f);
+
+    float D = LightingFuncGGX_D(NoH * NoH * NoH * NoH, Roughness);
+    glm::vec2 FV_helper = paraFV;
+
+    glm::vec3 F0 = SpecularColor;
+    glm::vec3 FV = F0*FV_helper.x + glm::vec3(FV_helper.y, FV_helper.y, FV_helper.y);
+
+    return D * FV;
+}

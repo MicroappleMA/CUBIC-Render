@@ -5,19 +5,17 @@
   "lights": [
     {
       "type": "directional",
-      "direction": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      }
+      "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+      "direction": {"x": 0.0, "y": 0.0, "z": 1.0},
+      "color": {"x": 1.0, "y": 1.0, "z": 1.0},
+      "intensity": 1.0
     },
     {
       "type": "point",
-      "position": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      }
+      "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+      "direction": {"x": 0.0, "y": 0.0, "z": 1.0},
+      "color": {"x": 1.0, "y": 1.0, "z": 1.0},
+      "intensity": 1.0
     }
   ]
 }

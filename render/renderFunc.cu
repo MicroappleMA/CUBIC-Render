@@ -216,7 +216,7 @@ void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_f
 * Writes fragment colors to the framebuffer
 */
 __global__
-void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, MaterialType overrideMaterial, int w, int h) {
+void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *light, unsigned int lightNum, MaterialType overrideMaterial, int w, int h) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     int index = x + (y * w);
@@ -225,7 +225,7 @@ void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Material
         Fragment &frag = fragmentBuffer[index];
         if (overrideMaterial != Invalid && frag.in.material != Invalid)
             frag.in.material = overrideMaterial;
-        framebuffer[index] = fragmentShader(frag);
+        framebuffer[index] = fragmentShader(frag, light, lightNum);
     }
 }
 

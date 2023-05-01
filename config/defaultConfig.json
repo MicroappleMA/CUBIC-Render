@@ -1,0 +1,28 @@
+{
+  "width": 3000,
+  "height": 2000,
+  "model": "./gltfs/Johanna/Johanna.gltf",
+  "lights": [
+    {
+      "type": "directional",
+      "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+      "direction": {"x": 0.2, "y": 2.0, "z": 1.0},
+      "color": {"x": 1.0, "y": 1.0, "z": 1.0},
+      "intensity": 2.0
+    },
+    {
+      "type": "directional",
+      "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+      "direction": {"x": 0.7, "y": 2.0, "z": -0.25},
+      "color": {"x": 0.3, "y": 0.5, "z": 0.9},
+      "intensity": 2.5
+    },
+    {
+      "type": "directional",
+      "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+      "direction": {"x": -1.0, "y": 2.0, "z": -0.2},
+      "color": {"x": 0.9, "y": 0.7, "z": 0.3},
+      "intensity": 1.0
+    }
+  ]
+}

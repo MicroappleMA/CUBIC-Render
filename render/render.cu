@@ -102,7 +102,13 @@ void Render::render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const
     cudaMemset(dev_framebuffer, 0, width * height * sizeof(glm::vec3));
 
     // Copy depthbuffer colors into framebuffer
-	_fragmentShading<<<blockCount2d, blockSize2d>>>(dev_framebuffer, dev_fragmentBuffer, overrideMaterial, width, height);
+	_fragmentShading<<<blockCount2d, blockSize2d>>>(dev_framebuffer,
+                                                    dev_fragmentBuffer,
+                                                    dev_lights,
+                                                    sceneInfo.numLights,
+                                                    overrideMaterial,
+                                                    width,
+                                                    height);
 	checkCUDAError("fragment shader");
 
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
@@ -158,23 +164,42 @@ void Render::free() {
     cudaFree(dev_framebuffer);
     dev_framebuffer = nullptr;
 
+    cudaFree(dev_lights);
+    dev_lights = nullptr;
+
     checkCUDAError("render Free");
 }
 
-void Render::init(const tinygltf::Scene & scene,const int &w,const int &h) {
+void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light, const int &w, const int &h) {
 
-    width = w;
-    height = h;
-    cudaFree(dev_fragmentBuffer);
-    cudaMalloc(&dev_fragmentBuffer, width * height * sizeof(Fragment));
-    cudaMemset(dev_fragmentBuffer, 0, width * height * sizeof(Fragment));
-    cudaFree(dev_tileBuffer);
-    cudaMalloc(&dev_tileBuffer, ((width + tileSize - 1) / tileSize) * ((height + tileSize - 1) / tileSize) * sizeof(Tile));
-    cudaMemset(dev_tileBuffer, 0, ((width + tileSize - 1) / tileSize) * ((height + tileSize - 1) / tileSize) * sizeof(Tile));
-    cudaFree(dev_framebuffer);
-    cudaMalloc(&dev_framebuffer,   width * height * sizeof(glm::vec3));
-    cudaMemset(dev_framebuffer, 0, width * height * sizeof(glm::vec3));
-    checkCUDAError("init");
+    // 0. Init some buffers that are not related to the scene
+    {
+        width = w;
+        height = h;
+
+        cudaFree(dev_fragmentBuffer);
+        cudaMalloc(&dev_fragmentBuffer, width * height * sizeof(Fragment));
+        cudaMemset(dev_fragmentBuffer, 0, width * height * sizeof(Fragment));
+        cudaFree(dev_tileBuffer);
+        cudaMalloc(&dev_tileBuffer,
+                   ((width + tileSize - 1) / tileSize) * ((height + tileSize - 1) / tileSize) * sizeof(Tile));
+        cudaMemset(dev_tileBuffer, 0,
+                   ((width + tileSize - 1) / tileSize) * ((height + tileSize - 1) / tileSize) * sizeof(Tile));
+        cudaFree(dev_framebuffer);
+        cudaMalloc(&dev_framebuffer, width * height * sizeof(glm::vec3));
+        cudaMemset(dev_framebuffer, 0, width * height * sizeof(glm::vec3));
+
+
+        sceneInfo.numLights = light.size();
+        cudaFree(dev_lights);
+        cudaMalloc(&dev_lights,sceneInfo.numLights * sizeof(Light));
+        for(int i=0; i<sceneInfo.numLights; i++)
+        {
+            cudaMemcpy(dev_lights+i, &(light[i]), sizeof(Light), cudaMemcpyHostToDevice);
+        }
+
+        checkCUDAError("init");
+    }
 
     int totalNumPrimitives = 0; // change static to non-static
 

@@ -18,38 +18,53 @@ int main(int argc, char **argv) {
 #else
     cout << "CUDA Rasterizer :: Release Version\n";
 #endif
-    if (argc != 2 && argc != 4) {
-        cout << "Usage: [gltf file] (width) (height). Press Enter to exit\n";
-		getchar();
+    if (argc != 2) {
+        cout << "Usage: [Config Path]. Press Enter to exit\n";
+        getchar();
         return 0;
     }
 
-    if(argc == 4)
+    std::ifstream ifs(argv[1]);
+    nlohmann::json config = nlohmann::json::parse(ifs);
+
+    width = config["width"];
+    height = config["height"];
+    string modelPath = config["model"];
+
+    cout<<"Width = "<<width<<", Height = "<<height<<"\nModel = "<<modelPath<<"\n";
+
+    // Load light info from json
+    vector<Light> light;
+    for (auto &&l:config["lights"])
     {
-        width = std::atoi(argv[2]);
-        height = std::atoi(argv[3]);
-        if(width == 0 || height == 0)
-        {
-            cout << "Error: width or height equal to zero\n";
-            return -1;
-        }
+        string typeString = l["type"];
+        LightType type = DirectionalLight;
+        if(typeString == "directional") type = DirectionalLight;
+        else if(typeString == "point") type = PointLight;
+
+        light.push_back({
+            type,
+            {l["position"]["x"],l["position"]["y"],l["position"]["z"]},
+            glm::normalize(glm::vec3{l["direction"]["x"],l["direction"]["y"],l["direction"]["z"]}),
+            {l["color"]["x"],l["color"]["y"],l["color"]["z"]},
+            l["intensity"]
+        });
     }
 
-    cout<<"Width = "<<width<<", Height = "<<height<<"\n";
 
+    // Load scene from disk
 	tinygltf::Scene scene;
 	tinygltf::TinyGLTFLoader loader;
 	std::string err;
-	std::string input_filename(argv[1]);
-	std::string ext = getFilePathExtension(input_filename);
+	std::string ext = getFilePathExtension(modelPath);
 
 	bool ret = false;
 	if (ext == "glb") {
 		// assume binary glTF.
-		ret = loader.LoadBinaryFromFile(&scene, &err, input_filename);
+		ret = loader.LoadBinaryFromFile(&scene, &err, modelPath);
 	} else {
 		// assume ascii glTF.
-		ret = loader.LoadASCIIFromFile(&scene, &err, input_filename);
+		ret = loader.LoadASCIIFromFile(&scene, &err, modelPath);
 	}
 
 	if (!err.empty()) {
@@ -68,7 +83,7 @@ int main(int argc, char **argv) {
     fpstracker = 0;
 
     // Launch CUDA/GL
-    if (init(scene)) {
+    if (init(scene, light)) {
         // GLFW main loop
         mainLoop();
     }
@@ -117,23 +132,23 @@ void runCuda() {
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
     dptr = NULL;
 
-	glm::mat4 P = glm::frustum<float>(-scale * ((float)width) / ((float)height),
-		scale * ((float)width / (float)height),
-		-scale, scale, 1.0, 1000.0);
+    glm::mat4 P = glm::frustum<float>(-scale * ((float)width) / ((float)height),
+                                      scale * ((float)width / (float)height),
+                                      -scale, scale, 1.0, 1000.0);
 
-	glm::mat4 V = glm::mat4(1.0f);
+    glm::mat4 V = glm::mat4(1.0f);
 
-	glm::mat4 M =
-		glm::translate(glm::vec3(x_trans, y_trans, z_trans))
-		* glm::rotate(x_angle, glm::vec3(1.0f, 0.0f, 0.0f))
-		* glm::rotate(y_angle, glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 M =
+            glm::translate(glm::vec3(x_trans, y_trans, z_trans))
+            * glm::rotate(x_angle, glm::vec3(1.0f, 0.0f, 0.0f))
+            * glm::rotate(y_angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
-	glm::mat3 MV_normal = glm::transpose(glm::inverse(glm::mat3(V) * glm::mat3(M)));
-	glm::mat4 MV = V * M;
-	glm::mat4 MVP = P * MV;
+    glm::mat3 MV_normal = glm::transpose(glm::inverse(glm::mat3(V) * glm::mat3(M)));
+    glm::mat4 MV = V * M;
+    glm::mat4 MVP = P * MV;
 
     cudaGLMapBufferObject((void **)&dptr, pbo);
-	Render::getInstance().render(dptr, M, V, P);
+    Render::getInstance().render(dptr, M, V, P);
     cudaGLUnmapBufferObject(pbo);
 
     frame++;
@@ -144,7 +159,7 @@ void runCuda() {
 //----------SETUP STUFF----------
 //-------------------------------
 
-bool init(const tinygltf::Scene & scene) {
+bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
     glfwSetErrorCallback(errorCallback);
 
     if (!glfwInit()) {
@@ -169,28 +184,28 @@ bool init(const tinygltf::Scene & scene) {
     initVAO();
     initTextures();
     initCuda();
-	initPBO();
+    initPBO();
 
-	// Mouse Control Callbacks
-	glfwSetMouseButtonCallback(window, mouseButtonCallback);
-	glfwSetCursorPosCallback(window, mouseMotionCallback);
-	glfwSetScrollCallback(window, mouseWheelCallback);
+    // Mouse Control Callbacks
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetCursorPosCallback(window, mouseMotionCallback);
+    glfwSetScrollCallback(window, mouseWheelCallback);
 
-	{
-		auto it(scene.scenes.begin());
-		auto itEnd(scene.scenes.end());
+    {
+        auto it(scene.scenes.begin());
+        auto itEnd(scene.scenes.end());
 
-		for (; it != itEnd; it++) {
-			for (size_t i = 0; i < it->second.size(); i++) {
-				std::cout << it->second[i]
-					<< ((i != (it->second.size() - 1)) ? ", " : "");
-			}
-			std::cout << " ] \n";
-		}
-	}
+        for (; it != itEnd; it++) {
+            for (size_t i = 0; i < it->second.size(); i++) {
+                std::cout << it->second[i]
+                          << ((i != (it->second.size() - 1)) ? ", " : "");
+            }
+            std::cout << " ] \n";
+        }
+    }
 
 
-	Render::getInstance().init(scene, width, height);
+    Render::getInstance().init(scene, light, width, height);
 
     GLuint passthroughProgram;
     passthroughProgram = initShader();
@@ -237,17 +252,17 @@ void initTextures() {
 
 void initVAO(void) {
     GLfloat vertices[] = {
-        -1.0f, -1.0f,
-        1.0f, -1.0f,
-        1.0f,  1.0f,
-        -1.0f,  1.0f,
+            -1.0f, -1.0f,
+            1.0f, -1.0f,
+            1.0f,  1.0f,
+            -1.0f,  1.0f,
     };
 
     GLfloat texcoords[] = {
-        1.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 0.0f,
-        1.0f, 0.0f
+            1.0f, 1.0f,
+            0.0f, 1.0f,
+            0.0f, 0.0f,
+            1.0f, 0.0f
     };
 
     GLushort indices[] = { 0, 1, 3, 3, 1, 2 };
@@ -350,9 +365,9 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
 //----- util -----------------
 //----------------------------
 static std::string getFilePathExtension(const std::string &FileName) {
-	if (FileName.find_last_of('.') != std::string::npos)
-		return FileName.substr(FileName.find_last_of('.') + 1);
-	return "";
+    if (FileName.find_last_of('.') != std::string::npos)
+        return FileName.substr(FileName.find_last_of('.') + 1);
+    return "";
 }
 
 
@@ -365,52 +380,52 @@ enum ControlState { NONE = 0, ROTATE, TRANSLATE };
 ControlState mouseState = NONE;
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
-	if (action == GLFW_PRESS)
-	{
-		if (button == GLFW_MOUSE_BUTTON_LEFT)
-		{
-			mouseState = ROTATE;
-		}
-		else if (button == GLFW_MOUSE_BUTTON_RIGHT)
-		{
-			mouseState = TRANSLATE;
-		}
+    if (action == GLFW_PRESS)
+    {
+        if (button == GLFW_MOUSE_BUTTON_LEFT)
+        {
+            mouseState = ROTATE;
+        }
+        else if (button == GLFW_MOUSE_BUTTON_RIGHT)
+        {
+            mouseState = TRANSLATE;
+        }
 
-	}
-	else if (action == GLFW_RELEASE)
-	{
-		mouseState = NONE;
-	}
+    }
+    else if (action == GLFW_RELEASE)
+    {
+        mouseState = NONE;
+    }
 }
 
 double lastx = (double)width / 2;
 double lasty = (double)height / 2;
 void mouseMotionCallback(GLFWwindow* window, double xpos, double ypos)
 {
-	const double s_r = 0.01;
-	const double s_t = 0.01;
+    const double s_r = 0.01;
+    const double s_t = 0.01;
 
-	double diffx = xpos - lastx;
-	double diffy = ypos - lasty;
-	lastx = xpos;
-	lasty = ypos;
+    double diffx = xpos - lastx;
+    double diffy = ypos - lasty;
+    lastx = xpos;
+    lasty = ypos;
 
-	if (mouseState == ROTATE)
-	{
-		//rotate
-		x_angle += (float)s_r * diffy;
-		y_angle += (float)s_r * diffx;
-	}
-	else if (mouseState == TRANSLATE)
-	{
-		//translate
-		x_trans += (float)(s_t * diffx);
-		y_trans += (float)(-s_t * diffy);
-	}
+    if (mouseState == ROTATE)
+    {
+        //rotate
+        x_angle += (float)s_r * diffy;
+        y_angle += (float)s_r * diffx;
+    }
+    else if (mouseState == TRANSLATE)
+    {
+        //translate
+        x_trans += (float)(s_t * diffx);
+        y_trans += (float)(-s_t * diffy);
+    }
 }
 
 void mouseWheelCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	const double s = 0.4;	// sensitivity
-	z_trans += (float)(s * yoffset);
+    const double s = 0.4;	// sensitivity
+    z_trans += (float)(s * yoffset);
 }

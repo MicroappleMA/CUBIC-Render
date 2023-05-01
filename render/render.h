@@ -20,7 +20,7 @@ public:
         return instance;
     }
 
-    void init(const tinygltf::Scene & scene, const int &width, const int &height);
+    void init(const tinygltf::Scene & scene, const std::vector<Light> &light, const int &w, const int &h);
     void render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P);
     void free();
 
@@ -41,6 +41,8 @@ private:
     Fragment *dev_fragmentBuffer = nullptr;
     Tile *dev_tileBuffer = nullptr;
     glm::vec3 *dev_framebuffer = nullptr;
+
+    Light *dev_lights = nullptr;
 };
 
 

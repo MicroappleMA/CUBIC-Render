@@ -27,6 +27,19 @@ enum MaterialType{
     PBR = 6
 };
 
+enum LightType{
+    DirectionalLight,
+    PointLight
+};
+
+struct Light{
+    LightType type;
+    glm::vec3 position;
+    glm::vec3 direction;
+    glm::vec3 color;
+    float intensity;
+};
+
 struct Tex
 {
     TextureData *data;
@@ -105,6 +118,7 @@ struct PrimitiveBuffer {
 struct SceneInfo {
     unsigned int numPrimitives;
     std::map<std::string, std::vector<PrimitiveBuffer>> mesh2PrimitivesMap;
+    unsigned int numLights;
 };
 
 struct AABB {
