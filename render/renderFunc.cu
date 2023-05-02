@@ -66,19 +66,18 @@ void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_
         // TODO: uncomment the following code for a start
         // This is primitive assembly for triangles
 
-        int pid;	// id for cur primitives vector
-        int vid;
+        int pid = 0;	// id for cur primitives vector
+        int vid = 0;
         if (primitive.primitiveMode == TINYGLTF_MODE_TRIANGLES) {
-            pid = iid / (int)primitive.primitiveType;
+            pid = iid / (int)primitive.primitiveType + curPrimitiveBeginId;
             vid = iid % (int)primitive.primitiveType;
-            dev_primitives[pid + curPrimitiveBeginId].v[vid]
+            dev_primitives[pid].v[vid]
                     = primitive.dev_verticesOut[primitive.dev_indices[iid]];
-            dev_primitives[pid + curPrimitiveBeginId].v[vid].color = {vid==0,vid==1,vid==2};
-            dev_primitives[pid + curPrimitiveBeginId].primitiveType = primitive.primitiveType;
+            dev_primitives[pid].primitiveType = primitive.primitiveType;
         }
-
-
         // TODO: other primitive types (point, line)
+
+        geometryShader(dev_primitives[pid]);
     }
 
 }
@@ -143,6 +142,7 @@ Fragment _generateFragment(const glm::vec3 &barycentricCoord, const Primitive &p
     INTERPOLATE(frag, primitive.v, coef, objectNor);
     INTERPOLATE(frag, primitive.v, coef, worldNor);
     INTERPOLATE(frag, primitive.v, coef, viewNor);
+    INTERPOLATE(frag, primitive.v, coef, tangent);
     COPY(frag, primitive.v, material);
     for(int i=0; i < maxTexNum; i++)
     {

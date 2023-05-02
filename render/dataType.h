@@ -65,6 +65,7 @@ struct VertexOut {
     glm::vec3 worldNor;
     glm::vec3 viewNor;
     glm::vec3 color;
+    glm::vec3 tangent;
     // TODO: add new attributes to your VertexOut
     // The attributes listed below might be useful,
     // but always feel free to modify on your own

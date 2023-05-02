@@ -203,3 +203,63 @@ glm::vec3 pbrGGX_Spec(glm::vec3 Normal, glm::vec3 HalfVec, float Roughness, glm:
 
     return D * FV;
 }
+
+__device__ static
+glm::vec3 getTangentAtCoordinate(const glm::vec2 *uv, const glm::vec4 *pos, const glm::vec3 &normal)
+{
+    float u0 = uv[1].x - uv[0].x;
+    float u1 = uv[2].x - uv[0].x;
+
+    float v0 = uv[1].y - uv[0].y;
+    float v1 = uv[2].y - uv[0].y;
+
+    float dino = u0 * v1 - v0 * u1;
+
+    glm::vec3 Pos1 = glm::vec3(pos[1] - pos[0]);
+    glm::vec3 Pos2 = glm::vec3(pos[2] - pos[0]);
+    glm::vec3 Pos3 = glm::vec3(pos[2] - pos[1]);
+
+    glm::vec2 UV1 = uv[1] - uv[0];
+    glm::vec2 UV2 = uv[2] - uv[0];
+
+    glm::vec3 tan;
+    glm::vec3 bit;
+    glm::vec3 nor;// = normal;
+
+
+    if (dino != 0.0f)
+    {
+        tan = glm::normalize( (UV2.y * Pos1 - UV1.y * Pos2) / dino );
+        bit = glm::normalize( (Pos2 - UV2.x * tan) / UV2.y );
+
+        nor = glm::normalize(glm::cross(tan, bit));
+    }
+    else
+    {
+
+        nor = glm::vec3(1.0f, 0.0f, 0.0f);
+        bit = glm::normalize(glm::cross(nor, tan));
+        tan = glm::normalize(glm::cross(bit, nor));
+    }
+
+    //U flip
+    if (glm::dot(nor, glm::normalize(glm::cross(Pos1, Pos3))) < 0.0f)
+    {
+        tan = -(tan);
+    }
+
+
+    bit = glm::normalize(glm::cross(normal, tan));
+    tan = glm::normalize(glm::cross(bit, normal));
+
+
+//    glm::mat4 tbn;
+//
+//    tbn[0] = glm::vec4(tan, 0.0f);
+//    tbn[1] = glm::vec4(bit, 0.0f);
+//    tbn[2] = glm::vec4(normal, 0.0f);
+//    tbn[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+
+    return tan;
+}
