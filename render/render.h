@@ -8,9 +8,7 @@
 
 #pragma once
 
-#define STB_IMAGE_IMPLEMENTATION
-#define TINYGLTF_LOADER_IMPLEMENTATION
-#include "util/tiny_gltf_loader.h"
+#include "util/tiny_gltf.h"
 #include "dataType.h"
 
 class Render {
@@ -20,7 +18,7 @@ public:
         return instance;
     }
 
-    void init(const tinygltf::Scene & scene, const std::vector<Light> &light, const int &w, const int &h);
+    void init(const tinygltf::Model & model, const std::vector<Light> &light, const int &w, const int &h);
     void render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P);
     void free();
 

@@ -16979,7 +16979,7 @@ boundaries compute_boundaries(FloatType value)
     // If v is denormal:
     //      value = 0.F * 2^(1 - bias) = (          F) * 2^(1 - bias - (p-1))
     // If v is normalized:
-    //      value = 1.F * 2^(E - bias) = (2^(p-1) + F) * 2^(E - bias - (p-1))
+    //      value = 1.F * 2^(EE - bias) = (2^(p-1) + F) * 2^(EE - bias - (p-1))
 
     static_assert(std::numeric_limits<FloatType>::is_iec559,
                   "internal error: dtoa_short requires an IEEE-754 floating-point implementation");
@@ -16992,13 +16992,13 @@ boundaries compute_boundaries(FloatType value)
     using bits_type = typename std::conditional<kPrecision == 24, std::uint32_t, std::uint64_t >::type;
 
     const auto bits = static_cast<std::uint64_t>(reinterpret_bits<bits_type>(value));
-    const std::uint64_t E = bits >> (kPrecision - 1);
+    const std::uint64_t EE = bits >> (kPrecision - 1);
     const std::uint64_t F = bits & (kHiddenBit - 1);
 
-    const bool is_denormal = E == 0;
+    const bool is_denormal = EE == 0;
     const diyfp v = is_denormal
                     ? diyfp(F, kMinExp)
-                    : diyfp(F + kHiddenBit, static_cast<int>(E) - kBias);
+                    : diyfp(F + kHiddenBit, static_cast<int>(EE) - kBias);
 
     // Compute the boundaries m- and m+ of the floating-point value
     // v = f * 2^e.
@@ -17021,7 +17021,7 @@ boundaries compute_boundaries(FloatType value)
     //      -----------------+------+------+-------------+-------------+---  (B)
     //                       v-     m-     v             m+            v+
 
-    const bool lower_boundary_is_closer = F == 0 && E > 1;
+    const bool lower_boundary_is_closer = F == 0 && EE > 1;
     const diyfp m_plus = diyfp(2 * v.f + 1, v.e - 1);
     const diyfp m_minus = lower_boundary_is_closer
                           ? diyfp(4 * v.f - 1, v.e - 2)  // (B)

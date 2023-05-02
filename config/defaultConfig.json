@@ -1,7 +1,7 @@
 {
   "width": 3000,
   "height": 2000,
-  "model": "./gltfs/Johanna/Johanna.gltf",
+  "model": "./gltfs/test/korean_fire_extinguisher_01_4k.gltf",
   "lights": [
     {
       "type": "directional",

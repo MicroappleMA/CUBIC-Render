@@ -7,7 +7,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include "util/checkCUDAError.h"
-#include "util/tiny_gltf_loader.h"
+#include "util/tiny_gltf.h"
 #include "external/include/glm/gtc/quaternion.hpp"
 #include "external/include/glm/gtx/transform.hpp"
 
@@ -347,32 +347,33 @@ glm::mat4 _getMatrixFromNodeMatrixVector(const tinygltf::Node & n) {
 }
 
 void _traverseNode (
-        std::map<std::string, glm::mat4> & n2m,
-        const tinygltf::Scene & scene,
-        const std::string & nodeString,
+        std::map<int, glm::mat4> & n2m,
+        const tinygltf::Model & model,
+        const int & nodeId,
         const glm::mat4 & parentMatrix
 )
 {
-    const tinygltf::Node & n = scene.nodes.at(nodeString);
+    const tinygltf::Node & n = model.nodes[nodeId];
     glm::mat4 M = parentMatrix * _getMatrixFromNodeMatrixVector(n);
-    n2m.insert(std::pair<std::string, glm::mat4>(nodeString, M));
+    n2m.insert(std::pair<int, glm::mat4>(nodeId, M));
 
     auto it = n.children.begin();
     auto itEnd = n.children.end();
 
     for (; it != itEnd; ++it) {
-        _traverseNode(n2m, scene, *it, M);
+        _traverseNode(n2m, model, *it, M);
     }
 }
 
-void _initTex(const tinygltf::Scene & scene, const tinygltf::Material &mat, const std::string &keyword, Tex &texData)
+void _initTex(const tinygltf::Model & model, const tinygltf::Material &mat, const std::string &keyword, Tex &texData)
 {
     if (mat.values.find(keyword) != mat.values.end()) {
-        std::string texName = mat.values.at(keyword).string_value;
-        if (!texName.empty() && scene.textures.find(texName) != scene.textures.end()) {
-            const tinygltf::Texture &tex = scene.textures.at(texName);
-            if (scene.images.find(tex.source) != scene.images.end()) {
-                const tinygltf::Image &image = scene.images.at(tex.source);
+        int texIndex = mat.values.at(keyword).TextureIndex();
+        if (texIndex != -1) {
+            const tinygltf::Texture &tex = model.textures[texIndex];
+            int imageIndex = tex.source;
+            if (imageIndex != -1) {
+                const tinygltf::Image &image = model.images[imageIndex];
 
                 size_t s = image.image.size() * sizeof(TextureData);
                 cudaMalloc(&(texData.data), s);

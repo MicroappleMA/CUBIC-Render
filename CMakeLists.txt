@@ -63,7 +63,7 @@ set(UTIL_FILES
     "util/utilityCore.cpp"
     "util/glslUtility.hpp"
     "util/glslUtility.cpp"
-    "util/tiny_gltf_loader.h")
+    "util/tiny_gltf.h")
 
 set(RENDER_FILES
     "render/render.cu"

@@ -52,30 +52,34 @@ int main(int argc, char **argv) {
     }
 
 
-    // Load scene from disk
-	tinygltf::Scene scene;
-	tinygltf::TinyGLTFLoader loader;
-	std::string err;
+    // Load model from disk
+	tinygltf::Model model;
+	tinygltf::TinyGLTF loader;
+	std::string error,warning;
 	std::string ext = getFilePathExtension(modelPath);
+
 
 	bool ret = false;
 	if (ext == "glb") {
 		// assume binary glTF.
-		ret = loader.LoadBinaryFromFile(&scene, &err, modelPath);
+		ret = loader.LoadBinaryFromFile(&model, &error, &warning, modelPath);
 	} else {
 		// assume ascii glTF.
-		ret = loader.LoadASCIIFromFile(&scene, &err, modelPath);
+		ret = loader.LoadASCIIFromFile(&model, &error, &warning, modelPath);
 	}
 
-	if (!err.empty()) {
-        cout<<"Err: "+err;
-	}
+    if (!warning.empty()) {
+        printf("Warn: %s\n", warning.c_str());
+    }
 
-	if (!ret) {
-        cout<<"Failed to parse glTF\n";
-        getchar();
-		return -1;
-	}
+    if (!error.empty()) {
+        printf("Err: %s\n", error.c_str());
+    }
+
+    if (!ret) {
+        printf("Failed to parse glTF\n");
+        return -1;
+    }
 
 
     frame = 0;
@@ -83,7 +87,7 @@ int main(int argc, char **argv) {
     fpstracker = 0;
 
     // Launch CUDA/GL
-    if (init(scene, light)) {
+    if (init(model, light)) {
         // GLFW main loop
         mainLoop();
     }
@@ -159,7 +163,7 @@ void runCuda() {
 //----------SETUP STUFF----------
 //-------------------------------
 
-bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
+bool init(const tinygltf::Model & model, const vector<Light> & light) {
     glfwSetErrorCallback(errorCallback);
 
     if (!glfwInit()) {
@@ -191,21 +195,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
     glfwSetCursorPosCallback(window, mouseMotionCallback);
     glfwSetScrollCallback(window, mouseWheelCallback);
 
-    {
-        auto it(scene.scenes.begin());
-        auto itEnd(scene.scenes.end());
-
-        for (; it != itEnd; it++) {
-            for (size_t i = 0; i < it->second.size(); i++) {
-                std::cout << it->second[i]
-                          << ((i != (it->second.size() - 1)) ? ", " : "");
-            }
-            std::cout << " ] \n";
-        }
-    }
-
-
-    Render::getInstance().init(scene, light, width, height);
+    Render::getInstance().init(model, light, width, height);
 
     GLuint passthroughProgram;
     passthroughProgram = initShader();

@@ -19,16 +19,17 @@
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#define TINYGLTF_LOADER_IMPLEMENTATION
-#include "util/tiny_gltf_loader.h"
+#include "util/json.hpp"
 #include "util/glslUtility.hpp"
 #include "util/utilityCore.hpp"
-#include "util/json.hpp"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtx/transform.hpp"
 #include "render/render.h"
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "util/tiny_gltf.h"
 
 using namespace std;
 
@@ -70,7 +71,7 @@ void runCuda();
 //-------------------------------
 //----------SETUP STUFF----------
 //-------------------------------
-bool init(const tinygltf::Scene & scene, const vector<Light> & light);
+bool init(const tinygltf::Model & model, const vector<Light> & light);
 void initPBO();
 void initCuda();
 void initTextures();

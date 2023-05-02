@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "util/tiny_gltf_loader.h"
+#include "util/tiny_gltf.h"
 #include "dataType.h"
 
 
@@ -39,9 +39,9 @@ void _nodeMatrixTransform(
 glm::mat4 _getMatrixFromNodeMatrixVector(const tinygltf::Node & n);
 
 void _traverseNode (
-        std::map<std::string, glm::mat4> & n2m,
-        const tinygltf::Scene & scene,
-        const std::string & nodeString,
+        std::map<int, glm::mat4> & n2m,
+        const tinygltf::Model & model,
+        const int & nodeId,
         const glm::mat4 & parentMatrix);
 
-void _initTex(const tinygltf::Scene & scene, const tinygltf::Material &mat, const std::string &keyword, Tex &texData);
+void _initTex(const tinygltf::Model & model, const tinygltf::Material &mat, const std::string &keyword, Tex &texData);
