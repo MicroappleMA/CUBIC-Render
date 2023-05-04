@@ -28,9 +28,6 @@
 ////////////////////////////////////////////////////////////////
 
 void Render::render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P) {
-    dim3 blockSize2d(tileSize, tileSize);
-    dim3 blockCount2d((width - 1) / tileSize + 1,(height - 1) / tileSize + 1);
-
 	// Execute your rasterization pipeline here
 	// (See README for rasterization pipeline outline.)
 
@@ -119,6 +116,15 @@ void Render::render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & 
     checkCUDAError("copy render result to pbo");
 }
 
+void Render::renderTex(int texIndex)
+{
+    // Assume show the first texture of the first primitive of the first mesh
+    const Tex &tex = sceneInfo.mesh2PrimitivesMap.begin()->second.begin()->dev_tex[texIndex];
+    _copyTexToPBO<<<blockCount2d, blockSize2d>>>(buffer, width, height,
+                                                 bufferBeginWidth, bufferBeginHeight,
+                                                 bufferWidth, bufferHeight, tex);
+}
+
 
 
 ////////////////////////////////////////////////////////////////
@@ -199,6 +205,9 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
         height = h;
 
         setPboConfig(beginW, beginH, bufferW, bufferH, pbo);
+
+        blockSize2d = {tileSize, tileSize, 1};
+        blockCount2d ={(width - 1) / tileSize + 1,(height - 1) / tileSize + 1, 1};
 
         cudaFree(dev_fragmentBuffer);
         cudaMalloc(&dev_fragmentBuffer, width * height * sizeof(Fragment));

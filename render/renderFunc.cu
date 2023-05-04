@@ -256,6 +256,23 @@ void _copyImageToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int buff
     }
 }
 
+__global__
+void _copyTexToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int bufferW, int bufferH, Tex tex) {
+    int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+    if (x < w && y < h) {
+        int pboIndex = (x + beginW) + ((y + beginH) * bufferW);
+
+        glm::vec3 texColor = sampleTex2d(tex, {1 - (float)x / w, (float)y / h});
+
+        pbo[pboIndex].w = 0;
+        pbo[pboIndex].x = glm::clamp(texColor.x, 0.0f, 1.0f) * 255.0;
+        pbo[pboIndex].y = glm::clamp(texColor.y, 0.0f, 1.0f) * 255.0;
+        pbo[pboIndex].z = glm::clamp(texColor.z, 0.0f, 1.0f) * 255.0;
+    }
+}
+
 ////////////////////////////////////////////////////////////////
 /// Functions that only be called when program start or exit ///
 ////////////////////////////////////////////////////////////////

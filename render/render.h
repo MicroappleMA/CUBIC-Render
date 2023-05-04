@@ -28,6 +28,7 @@ public:
     void setPboConfig(const int &beginW = -1, const int &beginH = -1,
                       const int &bufferW = -1, const int &bufferH = -1,
                       uchar4* const pbo = nullptr);
+    void renderTex(int texIndex);
 
     MaterialType overrideMaterial = Invalid;
 
@@ -39,6 +40,9 @@ private:
 
     int width = 0;
     int height = 0;
+
+    dim3 blockSize2d = {0,0,0};
+    dim3 blockCount2d = {0,0,0};
 
     int bufferBeginWidth = 0;
     int bufferBeginHeight = 0;

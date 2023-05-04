@@ -34,6 +34,9 @@ __global__
 void _copyImageToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int bufferW, int bufferH, glm::vec3 *image);
 
 __global__
+void _copyTexToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int bufferW, int bufferH, Tex tex);
+
+__global__
 void _deviceBufferCopy(int N, BufferByte* dev_dst, const BufferByte* dev_src, int n, int byteStride, int byteOffset, int componentTypeByteSize);
 
 __global__

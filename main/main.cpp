@@ -110,7 +110,7 @@ void mainLoop() {
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
         glBindTexture(GL_TEXTURE_2D, displayImage);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 2 * width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 3 * width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // VAO, shader program, and texture already bound
@@ -150,14 +150,19 @@ void runCuda() {
 
     // cudaGLMapBufferObject((void **)&dptr, pbo);
 
-    Render::getInstance().setPboConfig(width, 0);
+    Render::getInstance().setPboConfig(2 * width, 0);
     Render::getInstance().overrideMaterial = currentMaterial;
     Render::getInstance().render(M, V, P);
     cudaDeviceSynchronize();
 
-    Render::getInstance().setPboConfig(0, 0);
+    Render::getInstance().setPboConfig(width, 0);
     Render::getInstance().overrideMaterial = Tex0;
     Render::getInstance().render(M, V, P);
+    cudaDeviceSynchronize();
+
+    Render::getInstance().setPboConfig(0, 0);
+    Render::getInstance().overrideMaterial = Invalid;
+    Render::getInstance().renderTex(0);
     cudaDeviceSynchronize();
 
     // cudaGLUnmapBufferObject(pbo);
@@ -177,7 +182,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
         return false;
     }
 
-    window = glfwCreateWindow(2 * width, height, "", NULL, NULL);
+    window = glfwCreateWindow(3 * width, height, "", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return false;
@@ -216,7 +221,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
     }
 
 
-    Render::getInstance().init(scene, light, width, height, 0, 0, 2 * width, height, dptr);
+    Render::getInstance().init(scene, light, width, height, 0, 0, 3 * width, height, dptr);
 
     GLuint passthroughProgram;
     passthroughProgram = initShader();
@@ -229,7 +234,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
 
 void initPBO() {
     // set up vertex data parameter
-    int num_texels = 2 * width * height;
+    int num_texels = 3 * width * height;
     int num_values = num_texels * 4;
     int size_tex_data = sizeof(GLubyte) * num_values;
 
@@ -258,7 +263,7 @@ void initTextures() {
     glBindTexture(GL_TEXTURE_2D, displayImage);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, 2 * width, height, 0, GL_BGRA,
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, 3 * width, height, 0, GL_BGRA,
                   GL_UNSIGNED_BYTE, NULL);
 }
 
