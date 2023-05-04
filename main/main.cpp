@@ -110,7 +110,7 @@ void mainLoop() {
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
         glBindTexture(GL_TEXTURE_2D, displayImage);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 2 * width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // VAO, shader program, and texture already bound
@@ -127,10 +127,11 @@ void mainLoop() {
 float scale = 1.0f;
 float x_trans = 0.0f, y_trans = 0.0f, z_trans = 10.0f;
 float x_angle = 0.0f, y_angle = (float)PI;
+MaterialType currentMaterial = Invalid;
 void runCuda() {
     // Map OpenGL buffer object for writing from CUDA on a single GPU
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
-    dptr = NULL;
+    // dptr = NULL;
 
     glm::mat4 P = glm::frustum<float>(-scale * ((float)width) / ((float)height),
                                       scale * ((float)width / (float)height),
@@ -147,9 +148,19 @@ void runCuda() {
     glm::mat4 MV = V * M;
     glm::mat4 MVP = P * MV;
 
-    cudaGLMapBufferObject((void **)&dptr, pbo);
-    Render::getInstance().render(dptr, M, V, P);
-    cudaGLUnmapBufferObject(pbo);
+    // cudaGLMapBufferObject((void **)&dptr, pbo);
+
+    Render::getInstance().setPboConfig(width, 0);
+    Render::getInstance().overrideMaterial = currentMaterial;
+    Render::getInstance().render(M, V, P);
+    cudaDeviceSynchronize();
+
+    Render::getInstance().setPboConfig(0, 0);
+    Render::getInstance().overrideMaterial = Tex0;
+    Render::getInstance().render(M, V, P);
+    cudaDeviceSynchronize();
+
+    // cudaGLUnmapBufferObject(pbo);
 
     frame++;
     fpstracker++;
@@ -166,7 +177,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
         return false;
     }
 
-    window = glfwCreateWindow(width, height, "", NULL, NULL);
+    window = glfwCreateWindow(2 * width, height, "", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return false;
@@ -205,7 +216,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
     }
 
 
-    Render::getInstance().init(scene, light, width, height);
+    Render::getInstance().init(scene, light, width, height, 0, 0, 2 * width, height, dptr);
 
     GLuint passthroughProgram;
     passthroughProgram = initShader();
@@ -218,7 +229,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
 
 void initPBO() {
     // set up vertex data parameter
-    int num_texels = width * height;
+    int num_texels = 2 * width * height;
     int num_values = num_texels * 4;
     int size_tex_data = sizeof(GLubyte) * num_values;
 
@@ -231,6 +242,7 @@ void initPBO() {
     // Allocate data for the buffer. 4-channel 8-bit image
     glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
     cudaGLRegisterBufferObject(pbo);
+    cudaGLMapBufferObject((void **)&dptr, pbo);
 }
 
 void initCuda() {
@@ -246,7 +258,7 @@ void initTextures() {
     glBindTexture(GL_TEXTURE_2D, displayImage);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA,
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, 2 * width, height, 0, GL_BGRA,
                   GL_UNSIGNED_BYTE, NULL);
 }
 
@@ -343,7 +355,7 @@ void errorCallback(int error, const char *description) {
 
 // Index must in range[0,9]
 #define BIND_MATERIAL_KEY(index) \
-{if (key == GLFW_KEY_0 + (index)) {Render::getInstance().overrideMaterial = (MaterialType)(index); }}
+{if (key == GLFW_KEY_0 + (index)) {currentMaterial = (MaterialType)(index); }}
 
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS)
@@ -398,8 +410,8 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-double lastx = (double)width / 2;
-double lasty = (double)height / 2;
+double lastx = 0;
+double lasty = 0;
 void mouseMotionCallback(GLFWwindow* window, double xpos, double ypos)
 {
     const double s_r = 0.01;

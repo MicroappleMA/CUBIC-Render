@@ -59,10 +59,67 @@ void geometryShader(Primitive &prim)
 }
 
 __device__ static
+glm::vec3 pbrShader(const Fragment& frag, Light *light, unsigned int lightNum)
+{
+    glm::vec3 color = {0,0,0};
+    const VertexOut &in = frag.in;
+
+    glm::vec3 diffuseTex = sampleTex2d(in.tex[0], in.uv);
+    glm::vec3 specularTex = sampleTex2d(in.tex[1], in.uv);
+    glm::vec3 normalTex = sampleTex2d(in.tex[2], in.uv);
+    glm::vec3 roughnessTex = sampleTex2d(in.tex[3], in.uv);
+    glm::vec3 emissionTex = sampleTex2d(in.tex[4], in.uv);
+    glm::vec3 ViewVec = glm::normalize(-glm::vec3(in.worldPos));
+    glm::mat3 TBN = {glm::normalize(in.tangent),
+                     glm::normalize(glm::cross(in.worldNor, in.tangent)),
+                     glm::normalize(in.worldNor)};
+
+    // glm::vec3 NormalVec = in.worldNor; // Use direct normal instead of normal Texture
+    normalTex *= glm::vec3{2,2,1};
+    normalTex -= glm::vec3{1,1,0};
+
+    glm::vec3 NormalVec = glm::normalize(TBN * normalTex);
+    glm::vec3 ReflectVec = -glm::reflect(ViewVec, NormalVec);
+    float NoV = glm::clamp(glm::dot(NormalVec, ViewVec), 0.0f, 1.0f);
+
+    glm::vec3 environmentTex = sampleTexCubemap(in.tex[5], ReflectVec);
+
+    float roughness = glm::clamp(roughnessTex.x, 0.05f, 1.0f);
+    float metallic = roughnessTex.y;
+
+    float energyConservation = 1.0f - roughness;
+
+    // For-each Light Loop
+    for (int i = 0; i < lightNum; i++)
+    {
+        glm::vec3 LightVec = {0,0,1};
+        if (light[i].type == DirectionalLight)
+            LightVec = glm::normalize(light[i].direction);
+        else if (light[i].type == PointLight)
+            LightVec = glm::normalize(glm::vec3(in.worldPos) - light[i].position);
+        LightVec = -LightVec;
+
+        glm::vec3 HalfVec = glm::normalize(ViewVec + LightVec);
+
+        float NoL = glm::dot(LightVec, NormalVec);
+        float LoH = glm::clamp(glm::dot(LightVec, HalfVec), 0.0f, 1.0f);
+
+        if (NoL > 0.0f)
+        {
+            glm::vec3 specularTerm = pbrGGX_Spec(NormalVec, HalfVec, roughness, specularTex, pbrGGX_FV(LoH, roughness)) * energyConservation;
+            color += (diffuseTex + specularTerm) * NoL * glm::vec3(light[i].color) * light[i].intensity;
+        }
+        // TODO: Support SH Lighting
+    }
+    color += diffuseTex * environmentTex * energyConservation * metallic + emissionTex;
+    return color;
+}
+
+__device__ static
 glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightNum)
 {
     // Render Pass
-    glm::vec3 color;
+    glm::vec3 color = {0,0,0};
     const VertexOut &in = frag.in;
 
     switch (in.material) {
@@ -84,54 +141,7 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
             color = sampleTex2d(in.tex[0], in.uv);
             break;
         case PBR:
-            glm::vec3 diffuseTex = sampleTex2d(in.tex[0], in.uv);
-            glm::vec3 specularTex = sampleTex2d(in.tex[1], in.uv);
-            glm::vec3 normalTex = sampleTex2d(in.tex[2], in.uv);
-            glm::vec3 roughnessTex = sampleTex2d(in.tex[3], in.uv);
-            glm::vec3 emissionTex = sampleTex2d(in.tex[4], in.uv);
-            glm::vec3 ViewVec = glm::normalize(-glm::vec3(in.worldPos));
-            glm::mat3 TBN = {glm::normalize(in.tangent),
-                             glm::normalize(glm::cross(in.worldNor, in.tangent)),
-                             glm::normalize(in.worldNor)};
-
-            // glm::vec3 NormalVec = in.worldNor; // Use direct normal instead of normal Texture
-            normalTex *= glm::vec3{2,2,1};
-            normalTex -= glm::vec3{1,1,0};
-
-            glm::vec3 NormalVec = glm::normalize(TBN * normalTex);
-            glm::vec3 ReflectVec = -glm::reflect(ViewVec, NormalVec);
-            float NoV = glm::clamp(glm::dot(NormalVec, ViewVec), 0.0f, 1.0f);
-
-            glm::vec3 environmentTex = sampleTexCubemap(in.tex[5], ReflectVec);
-
-            float roughness = glm::clamp(roughnessTex.x, 0.05f, 1.0f);
-            float metallic = roughnessTex.y;
-
-            float energyConservation = 1.0f - roughness;
-
-            // For-each Light Loop
-            for (int i = 0; i < lightNum; i++)
-            {
-                glm::vec3 LightVec = {0,0,1};
-                if (light[i].type == DirectionalLight)
-                    LightVec = glm::normalize(light[i].direction);
-                else if (light[i].type == PointLight)
-                    LightVec = glm::normalize(glm::vec3(in.worldPos) - light[i].position);
-                LightVec = -LightVec;
-
-                glm::vec3 HalfVec = glm::normalize(ViewVec + LightVec);
-
-                float NoL = glm::dot(LightVec, NormalVec);
-                float LoH = glm::clamp(glm::dot(LightVec, HalfVec), 0.0f, 1.0f);
-
-                if (NoL > 0.0f)
-                {
-                    glm::vec3 specularTerm = pbrGGX_Spec(NormalVec, HalfVec, roughness, specularTex, pbrGGX_FV(LoH, roughness)) * energyConservation;
-                    color += (diffuseTex + specularTerm) * NoL * glm::vec3(light[i].color) * light[i].intensity;
-                }
-                // TODO: Support SH Lighting
-            }
-            color += diffuseTex * environmentTex * energyConservation * metallic + emissionTex;
+            color = pbrShader(frag, light, lightNum);
             break;
     }
 

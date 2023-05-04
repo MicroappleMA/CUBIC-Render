@@ -27,7 +27,7 @@
 ///                      Render Pipeline                     ///
 ////////////////////////////////////////////////////////////////
 
-void Render::render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P) {
+void Render::render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P) {
     dim3 blockSize2d(tileSize, tileSize);
     dim3 blockCount2d((width - 1) / tileSize + 1,(height - 1) / tileSize + 1);
 
@@ -112,7 +112,10 @@ void Render::render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const
 	checkCUDAError("fragment shader");
 
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
-    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, width, height, dev_framebuffer);
+    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, width, height,
+                                                   bufferBeginWidth, bufferBeginHeight,
+                                                   bufferWidth, bufferHeight,
+                                                   dev_framebuffer);
     checkCUDAError("copy render result to pbo");
 }
 
@@ -170,12 +173,32 @@ void Render::free() {
     checkCUDAError("render Free");
 }
 
-void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light, const int &w, const int &h) {
+void Render::setPboConfig(const int &beginW, const int &beginH,
+                          const int &bufferW, const int &bufferH,
+                          uchar4* const pbo)
+{
+    if (beginW >= 0)
+        bufferBeginWidth = beginW;
+    if (beginH >= 0)
+        bufferBeginHeight = beginH;
+    if (bufferW >= 0)
+        bufferWidth = bufferW;
+    if (bufferH >= 0)
+        bufferHeight = bufferH;
+    if (pbo)
+        buffer = pbo;
+}
+
+void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light,
+                  const int &w, const int &h, const int &beginW, const int &beginH,
+                  const int &bufferW, const int &bufferH, uchar4* const pbo) {
 
     // 0. Init some buffers that are not related to the scene
     {
         width = w;
         height = h;
+
+        setPboConfig(beginW, beginH, bufferW, bufferH, pbo);
 
         cudaFree(dev_fragmentBuffer);
         cudaMalloc(&dev_fragmentBuffer, width * height * sizeof(Fragment));

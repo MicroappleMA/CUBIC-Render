@@ -20,9 +20,14 @@ public:
         return instance;
     }
 
-    void init(const tinygltf::Scene & scene, const std::vector<Light> &light, const int &w, const int &h);
-    void render(uchar4 *pbo, const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P);
+    void init(const tinygltf::Scene & scene, const std::vector<Light> &light,
+              const int &w, const int &h, const int &beginW, const int &beginH,
+              const int &bufferW, const int &bufferH, uchar4* const pbo);
+    void render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P);
     void free();
+    void setPboConfig(const int &beginW = -1, const int &beginH = -1,
+                      const int &bufferW = -1, const int &bufferH = -1,
+                      uchar4* const pbo = nullptr);
 
     MaterialType overrideMaterial = Invalid;
 
@@ -34,6 +39,14 @@ private:
 
     int width = 0;
     int height = 0;
+
+    int bufferBeginWidth = 0;
+    int bufferBeginHeight = 0;
+
+    int bufferWidth = 0;
+    int bufferHeight = 0;
+
+    uchar4 *buffer = nullptr;
 
     SceneInfo sceneInfo;
 

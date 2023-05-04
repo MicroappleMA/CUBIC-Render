@@ -240,21 +240,19 @@ void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *l
  * Kernel that writes the image to the OpenGL PBO directly.
  */
 __global__
-void _copyImageToPBO(uchar4 *pbo, int w, int h, glm::vec3 *image) {
+void _copyImageToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int bufferW, int bufferH, glm::vec3 *image) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-    int index = x + (y * w);
 
     if (x < w && y < h) {
-        glm::vec3 color;
-        color.x = glm::clamp(image[index].x, 0.0f, 1.0f) * 255.0;
-        color.y = glm::clamp(image[index].y, 0.0f, 1.0f) * 255.0;
-        color.z = glm::clamp(image[index].z, 0.0f, 1.0f) * 255.0;
         // Each thread writes one pixel location in the texture (textel)
-        pbo[index].w = 0;
-        pbo[index].x = color.x;
-        pbo[index].y = color.y;
-        pbo[index].z = color.z;
+        int index = x + (y * w);
+        int pboIndex = (x + beginW) + ((y + beginH) * bufferW);
+
+        pbo[pboIndex].w = 0;
+        pbo[pboIndex].x = glm::clamp(image[index].x, 0.0f, 1.0f) * 255.0;
+        pbo[pboIndex].y = glm::clamp(image[index].y, 0.0f, 1.0f) * 255.0;
+        pbo[pboIndex].z = glm::clamp(image[index].z, 0.0f, 1.0f) * 255.0;
     }
 }
 

@@ -31,7 +31,7 @@ __global__
 void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *light, unsigned int lightNum, MaterialType overrideMaterial, int w, int h);
 
 __global__
-void _copyImageToPBO(uchar4 *pbo, int w, int h, glm::vec3 *image);
+void _copyImageToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int bufferW, int bufferH, glm::vec3 *image);
 
 __global__
 void _deviceBufferCopy(int N, BufferByte* dev_dst, const BufferByte* dev_src, int n, int byteStride, int byteOffset, int componentTypeByteSize);
