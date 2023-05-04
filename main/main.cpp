@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
             type,
             {l["position"]["x"],l["position"]["y"],l["position"]["z"]},
             glm::normalize(glm::vec3{l["direction"]["x"],l["direction"]["y"],l["direction"]["z"]}),
-            {l["color"]["x"],l["color"]["y"],l["color"]["z"]},
+            {l["color"]["r"],l["color"]["g"],l["color"]["b"]},
             l["intensity"]
         });
     }
@@ -125,8 +125,8 @@ void mainLoop() {
 //---------RUNTIME STUFF---------
 //-------------------------------
 float scale = 1.0f;
-float x_trans = 0.0f, y_trans = 0.0f, z_trans = -10.0f;
-float x_angle = 0.0f, y_angle = 0.0f;
+float x_trans = 0.0f, y_trans = 0.0f, z_trans = 10.0f;
+float x_angle = 0.0f, y_angle = (float)PI;
 void runCuda() {
     // Map OpenGL buffer object for writing from CUDA on a single GPU
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
@@ -136,12 +136,12 @@ void runCuda() {
                                       scale * ((float)width / (float)height),
                                       -scale, scale, 1.0, 1000.0);
 
-    glm::mat4 V = glm::mat4(1.0f);
+    glm::mat4 V = glm::rotate((float)PI, glm::vec3{0.0f, 1.0f, 0.0f});
 
     glm::mat4 M =
             glm::translate(glm::vec3(x_trans, y_trans, z_trans))
-            * glm::rotate(x_angle, glm::vec3(1.0f, 0.0f, 0.0f))
-            * glm::rotate(y_angle, glm::vec3(0.0f, 1.0f, 0.0f));
+            * glm::rotate(x_angle, glm::vec3{1.0f, 0.0f, 0.0f})
+            * glm::rotate(y_angle, glm::vec3{0.0f, 1.0f, 0.0f});
 
     glm::mat3 MV_normal = glm::transpose(glm::inverse(glm::mat3(V) * glm::mat3(M)));
     glm::mat4 MV = V * M;
@@ -413,7 +413,7 @@ void mouseMotionCallback(GLFWwindow* window, double xpos, double ypos)
     if (mouseState == ROTATE)
     {
         //rotate
-        x_angle += (float)s_r * diffy;
+        x_angle -= (float)s_r * diffy;
         y_angle += (float)s_r * diffx;
     }
     else if (mouseState == TRANSLATE)
@@ -426,6 +426,6 @@ void mouseMotionCallback(GLFWwindow* window, double xpos, double ypos)
 
 void mouseWheelCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    const double s = 0.4;	// sensitivity
-    z_trans += (float)(s * yoffset);
+    const double sensitivity = 0.3;
+    z_trans -= (float)(sensitivity * yoffset);
 }
