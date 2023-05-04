@@ -1,3 +1,11 @@
+/**
+ * @file      shader.h
+ * @brief     custom shaders of the render pipeline.
+ * @authors   Jiayi Chen
+ * @date      2023-2023
+ * @copyright Jiayi Chen
+ */
+
 #pragma once
 
 #include <cmath>

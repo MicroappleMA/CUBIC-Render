@@ -1,9 +1,9 @@
 /**
  * @file      main.cpp
  * @brief     Main file for CUDA rasterizer. Handles CUDA-GL interop for display.
- * @authors   Skeleton code: Yining Karl Li, Kai Ninomiya, Shuai Shao (Shrek)
- * @date      2012-2016
- * @copyright University of Pennsylvania
+ * @authors   Jiayi Chen, Skeleton code: Yining Karl Li, Kai Ninomiya, Shuai Shao (Shrek)
+ * @date      2012-2023
+ * @copyright Jiayi Chen, University of Pennsylvania
  */
 
 #include "main.hpp"

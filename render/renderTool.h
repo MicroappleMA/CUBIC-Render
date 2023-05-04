@@ -1,9 +1,9 @@
 /**
  * @file      rasterizeTools.h
  * @brief     Tools/utility functions for rasterization.
- * @authors   Yining Karl Li
- * @date      2012-2015
- * @copyright University of Pennsylvania
+ * @authors   Jiayi Chen, Yining Karl Li
+ * @date      2012-2023
+ * @copyright Jiayi Chen, University of Pennsylvania
  */
 
 #pragma once

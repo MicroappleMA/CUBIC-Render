@@ -1,3 +1,10 @@
+/**
+ * @file      renderFunc.cu
+ * @brief     Implement all functions of CUDA-accelerated rasterization pipeline.
+ * @authors   Jiayi Chen, Skeleton code: Yining Karl Li, Kai Ninomiya, Shuai Shao (Shrek)
+ * @date      2012-2023
+ * @copyright Jiayi Chen, University of Pennsylvania
+ */
 
 #include <map>
 #include <string>

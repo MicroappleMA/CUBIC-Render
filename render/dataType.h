@@ -1,3 +1,11 @@
+/**
+ * @file      dataType.h
+ * @brief     Define constant and data struct.
+ * @authors   Jiayi Chen, Skeleton code: Yining Karl Li, Kai Ninomiya, Shuai Shao (Shrek)
+ * @date      2012-2023
+ * @copyright Jiayi Chen, University of Pennsylvania
+ */
+
 #pragma once
 
 #include "external/include/glm/glm.hpp"

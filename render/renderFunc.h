@@ -1,5 +1,12 @@
-#pragma once
+/**
+ * @file      renderFunc.h
+ * @brief     All functions of CUDA-accelerated rasterization pipeline.
+ * @authors   Jiayi Chen, Skeleton code: Yining Karl Li, Kai Ninomiya, Shuai Shao (Shrek)
+ * @date      2012-2023
+ * @copyright Jiayi Chen, University of Pennsylvania
+ */
 
+#pragma once
 
 #include "util/tiny_gltf_loader.h"
 #include "dataType.h"

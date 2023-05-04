@@ -1,9 +1,9 @@
 /**
  * @file      render.h
  * @brief     CUDA-accelerated rasterization pipeline.
- * @authors   Skeleton code: Yining Karl Li, Kai Ninomiya, Shuai Shao (Shrek)
- * @date      2012-2016
- * @copyright University of Pennsylvania & STUDENT
+ * @authors   Jiayi Chen, Skeleton code: Yining Karl Li, Kai Ninomiya, Shuai Shao (Shrek)
+ * @date      2012-2023
+ * @copyright Jiayi Chen, University of Pennsylvania
  */
 
 #pragma once
