@@ -259,11 +259,12 @@ void _copyImageToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int buff
         // Each thread writes one pixel location in the texture (textel)
         int index = x + (y * w);
         int pboIndex = (x + beginW) + ((y + beginH) * bufferW);
+        glm::vec3 color = glm::clamp(image[index],0.0f,1.0f);
 
         pbo[pboIndex].w = 0;
-        pbo[pboIndex].x = glm::clamp(image[index].x, 0.0f, 1.0f) * 255.0;
-        pbo[pboIndex].y = glm::clamp(image[index].y, 0.0f, 1.0f) * 255.0;
-        pbo[pboIndex].z = glm::clamp(image[index].z, 0.0f, 1.0f) * 255.0;
+        pbo[pboIndex].x = color.x * 255.0;
+        pbo[pboIndex].y = color.y * 255.0;
+        pbo[pboIndex].z = color.z * 255.0;
     }
 }
 
@@ -276,11 +277,12 @@ void _copyTexToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int buffer
         int pboIndex = (x + beginW) + ((y + beginH) * bufferW);
 
         glm::vec3 texColor = sampleTex2d(tex, {1 - (float)x / w, (float)y / h});
+        texColor = glm::clamp(texColor,0.0f,1.0f);
 
         pbo[pboIndex].w = 0;
-        pbo[pboIndex].x = glm::clamp(texColor.x, 0.0f, 1.0f) * 255.0;
-        pbo[pboIndex].y = glm::clamp(texColor.y, 0.0f, 1.0f) * 255.0;
-        pbo[pboIndex].z = glm::clamp(texColor.z, 0.0f, 1.0f) * 255.0;
+        pbo[pboIndex].x = texColor.x * 255.0;
+        pbo[pboIndex].y = texColor.y * 255.0;
+        pbo[pboIndex].z = texColor.z * 255.0;
     }
 }
 

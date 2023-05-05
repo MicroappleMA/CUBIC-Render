@@ -168,13 +168,80 @@ void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsig
 {
     VertexOut &in = frag.in;
 
-    //assume Tex[6] is the texture that waiting for baking
-    const int bakedTexIndex = 6;
+    const float learningRate = 0.05;
 
-    if(in.material!=Invalid && in.tex[bakedTexIndex].data)
+    //assume Tex[6] is the texture that is waiting for baking
+    const int bakedTexIndex = 6;
+    Tex &bakedTex = in.tex[bakedTexIndex];
+
+    if(in.material!=Invalid && bakedTex.data)
     {
-        glm::vec3 BakedTex = sampleTex2d(in.tex[bakedTexIndex], in.uv);
-        glm::vec3 diff = glm::abs(BakedTex - color);
-        color = diff;
+        if(in.uv.x<0 || in.uv.x>=1 || in.uv.y<0 || in.uv.y>=1)
+            return; // Ensure UV is valid
+
+        color = glm::clamp(color, 0.0f, 1.0f);
+
+        float w = (float)bakedTex.width * in.uv.x;
+        float h = (float)bakedTex.height * in.uv.y;
+
+        int W1 = (int)(w);
+        int H1 = (int)(h);
+
+        int W2 = glm::min(W1 + 1, bakedTex.width - 1);
+        int H2 = glm::min(H1 + 1, bakedTex.height - 1);
+
+        float x = w - (float)W1;
+        float y = h - (float)H1;
+
+        glm::vec3 A = _sampleTex(bakedTex.data, W1 + H1 * bakedTex.width);
+        glm::vec3 B = _sampleTex(bakedTex.data, W2 + H1 * bakedTex.width);
+        glm::vec3 C = _sampleTex(bakedTex.data, W1 + H2 * bakedTex.width);
+        glm::vec3 D = _sampleTex(bakedTex.data, W2 + H2 * bakedTex.width);
+
+        glm::vec3 M = glm::mix(A, C, y);
+        glm::vec3 N = glm::mix(B, D, y);
+
+        glm::vec3 R = glm::mix(M, N, x);
+
+        // L1 Loss Function
+        glm::vec3 loss = glm::abs(R - color);
+
+        // Calc Partial Gradient
+        glm::vec3 gradLR = {R.x > color.x ? 1.0f - color.x : color.x - 1.0f,
+                            R.y > color.y ? 1.0f - color.y : color.y - 1.0f,
+                            R.z > color.z ? 1.0f - color.z : color.z - 1.0f};
+
+        glm::vec3 gradRM = glm::mix({1.0f,1.0f,1.0f},N,x);
+        glm::vec3 gradRN = glm::mix({1.0f,1.0f,1.0f},M,1-x);
+
+        glm::vec3 gradMA = glm::mix({1.0f,1.0f,1.0f},C,y);
+        glm::vec3 gradMC = glm::mix({1.0f,1.0f,1.0f},A,1-y);
+        glm::vec3 gradNB = glm::mix({1.0f,1.0f,1.0f},D,y);
+        glm::vec3 gradND = glm::mix({1.0f,1.0f,1.0f},B,1-y);
+
+        // Chain Rule
+        glm::vec3 gradLA = gradLR * gradRM * gradMA;
+        glm::vec3 gradLB = gradLR * gradRN * gradNB;
+        glm::vec3 gradLC = gradLR * gradRM * gradMC;
+        glm::vec3 gradLD = gradLR * gradRN * gradND;
+
+        // Update Texture
+        A -= gradLA * learningRate;
+        B -= gradLB * learningRate;
+        C -= gradLC * learningRate;
+        D -= gradLD * learningRate;
+
+        // Write Back
+        _writeTex(bakedTex.data, W1 + H1 * bakedTex.width, A);
+        _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, B);
+        _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, C);
+        _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, D);
+//        _writeTex(bakedTex.data, W1 + H1 * bakedTex.width, color);
+//        _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, color);
+//        _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, color);
+//        _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, color);
+
+
+        color = R;
     }
 }

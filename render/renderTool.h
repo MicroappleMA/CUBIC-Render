@@ -115,7 +115,7 @@ glm::vec3 _sampleTex(const TextureData *tex, const unsigned int &index)
 __device__ static
 void _writeTex(TextureData *tex, const unsigned int &index, const glm::vec3 &value)
 {
-    tex[index * 3] = glm::clamp(value.x, 0.0f, 1.0f) * 255.0;
+    tex[index * 3]     = glm::clamp(value.x, 0.0f, 1.0f) * 255.0;
     tex[index * 3 + 1] = glm::clamp(value.y, 0.0f, 1.0f) * 255.0;
     tex[index * 3 + 2] = glm::clamp(value.z, 0.0f, 1.0f) * 255.0;
 }
@@ -126,32 +126,26 @@ glm::vec3 sampleTex2d(const Tex &tex, const glm::vec2 &UV)
     if(tex.data==nullptr || UV.x<0 || UV.x>=1 || UV.y<0 || UV.y>=1)
         return {1,0,0}; // Ensure UV is valid
 
-    float w = (float)tex.width * (UV.x - glm::floor(UV.x));
-    float h = (float)tex.height * (UV.y - glm::floor(UV.y));
+    float w = (float)tex.width * UV.x;
+    float h = (float)tex.height * UV.y;
 
-    int firstW = (int)(w);
-    int firstH = (int)(h);
+    int W1 = (int)(w);
+    int H1 = (int)(h);
 
-    int secondW = glm::min(firstW + 1, tex.width - 1);
-	int secondH = glm::min(firstH + 1, tex.height - 1);
+    int W2 = glm::min(W1 + 1, tex.width - 1);
+	int H2 = glm::min(H1 + 1, tex.height - 1);
 
-	float x_gap = w - (float)firstW;
-	float y_gap = h - (float)firstH;
+	float x = w - (float)W1;
+	float y = h - (float)H1;
 
-    glm::vec3 color1 = _sampleTex(tex.data,firstW + firstH * tex.width);
-    glm::vec3 color2 = _sampleTex(tex.data,secondW + firstH * tex.width);
-    glm::vec3 color3 = _sampleTex(tex.data,firstW + secondH * tex.width);
-    glm::vec3 color4 = _sampleTex(tex.data,secondW + secondH * tex.width);
+    glm::vec3 A = _sampleTex(tex.data, W1 + H1 * tex.width);
+    glm::vec3 B = _sampleTex(tex.data, W2 + H1 * tex.width);
+    glm::vec3 C = _sampleTex(tex.data, W1 + H2 * tex.width);
+    glm::vec3 D = _sampleTex(tex.data, W2 + H2 * tex.width);
 
-	return glm::mix(glm::mix(color1, color2, x_gap),
-                    glm::mix(color3, color4, x_gap),
-                    y_gap);
-}
-
-__device__ static
-void inverseSampleTex2d(Tex &tex, const glm::vec2 &UV, const glm::vec3 &grad)
-{
-
+	return glm::mix(glm::mix(A, B, x),
+                    glm::mix(C, D, x),
+                    y);
 }
 
 __device__  static
