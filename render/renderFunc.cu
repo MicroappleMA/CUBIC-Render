@@ -236,6 +236,17 @@ void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *l
     }
 }
 
+__global__
+void _inverseFragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *light, unsigned int lightNum, int w, int h) {
+    int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    int index = x + (y * w);
+
+    if (x < w && y < h) {
+        inverseFragmentShader(framebuffer[index],fragmentBuffer[index],light,lightNum);
+    }
+}
+
 /**
  * Kernel that writes the image to the OpenGL PBO directly.
  */

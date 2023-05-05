@@ -59,6 +59,18 @@ void geometryShader(Primitive &prim)
 }
 
 __device__ static
+glm::vec3 envShader(const Fragment& frag)
+{
+    const VertexOut &in = frag.in;
+    glm::mat3 TBN = getTBN(in.tangent, in.worldNor);
+    glm::vec3 normalTex = sampleTex2d(in.tex[2], in.uv);
+    glm::vec3 normal = glm::normalize(TBN * normalTex);
+    glm::vec3 view = glm::normalize(-glm::vec3(in.worldPos));
+    glm::vec3 reflect = -glm::reflect(view, normal);
+    return sampleTexCubemap(in.tex[5], reflect);
+}
+
+__device__ static
 glm::vec3 pbrShader(const Fragment& frag, Light *light, unsigned int lightNum)
 {
     glm::vec3 color = {0,0,0};
@@ -70,9 +82,7 @@ glm::vec3 pbrShader(const Fragment& frag, Light *light, unsigned int lightNum)
     glm::vec3 roughnessTex = sampleTex2d(in.tex[3], in.uv);
     glm::vec3 emissionTex = sampleTex2d(in.tex[4], in.uv);
     glm::vec3 ViewVec = glm::normalize(-glm::vec3(in.worldPos));
-    glm::mat3 TBN = {glm::normalize(in.tangent),
-                     glm::normalize(glm::cross(in.worldNor, in.tangent)),
-                     glm::normalize(in.worldNor)};
+    glm::mat3 TBN = getTBN(in.tangent, in.worldNor);
 
     // glm::vec3 NormalVec = in.worldNor; // Use direct normal instead of normal Texture
     normalTex *= glm::vec3{2,2,1};
@@ -129,7 +139,7 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
             color = (1 - frag.depth) / 2 * glm::vec3(1,1,1);
             break;
         case Mesh:
-            color = frag.in.color;
+            color = in.color;
             break;
         case UV:
             color = glm::vec3(in.uv,0);
@@ -140,6 +150,9 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
         case Tex0:
             color = sampleTex2d(in.tex[0], in.uv);
             break;
+        case Env:
+            color = envShader(frag);
+            break;
         case PBR:
             color = pbrShader(frag, light, lightNum);
             break;
@@ -148,4 +161,20 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
     // TODO: add your fragment shader code here
 
     return color;
+}
+
+__device__ static
+void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsigned int lightNum)
+{
+    VertexOut &in = frag.in;
+
+    //assume Tex[6] is the texture that waiting for baking
+    const int bakedTexIndex = 6;
+
+    if(in.material!=Invalid && in.tex[bakedTexIndex].data)
+    {
+        glm::vec3 BakedTex = sampleTex2d(in.tex[bakedTexIndex], in.uv);
+        glm::vec3 diff = glm::abs(BakedTex - color);
+        color = diff;
+    }
 }

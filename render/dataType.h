@@ -13,7 +13,7 @@
 static const unsigned int tileSize = 8;
 static const unsigned int maxPrimitivesPerTile = 1024;
 static const unsigned int defaultThreadPerBlock = 256;
-static const unsigned int maxTexNum = 6;
+static const unsigned int maxTexNum = 8;
 
 typedef unsigned short VertexIndex;
 typedef unsigned char TextureData;
@@ -32,7 +32,8 @@ enum MaterialType{
     UV = 3,
     Normal = 4,
     Tex0 = 5,
-    PBR = 6
+    Env = 6,
+    PBR = 7
 };
 
 enum LightType{
@@ -50,9 +51,9 @@ struct Light{
 
 struct Tex
 {
-    TextureData *data;
-    int width;
-    int height;
+    TextureData *data = nullptr;
+    int width = 0;
+    int height = 0;
 };
 
 struct VertexIn {

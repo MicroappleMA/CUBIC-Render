@@ -127,7 +127,12 @@
          "file5": {
             "name": "file5",
             "uri": "outside.png"
+        },
+         "file6": {
+            "name": "file6",
+            "uri": "storm_hero_d3crusaderf_base_bake.png"
         }
+
        
     },
     "materials": {
@@ -146,7 +151,8 @@
                 "specular" : "texture_file1",           
                 "roughness" : "texture_file2",
                 "normal": "texture_file3",
-                "environment": "texture_file5"
+                "environment": "texture_file5",
+                "bake": "texture_file6"
             }
         }
     },
@@ -286,6 +292,14 @@
             "internalFormat": 6408,
             "sampler": "sampler_0",
             "source": "file5",
+            "target": 3553,
+            "type": 5121
+        },
+        "texture_file6": {
+            "format": 6408,
+            "internalFormat": 6408,
+            "sampler": "sampler_0",
+            "source": "file6",
             "target": 3553,
             "type": 5121
         }

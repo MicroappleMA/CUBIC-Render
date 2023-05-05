@@ -116,6 +116,22 @@ void Render::render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & 
     checkCUDAError("copy render result to pbo");
 }
 
+void Render::inverseRender()
+{
+    _inverseFragmentShading<<<blockCount2d, blockSize2d>>>(dev_framebuffer,
+                                                    dev_fragmentBuffer,
+                                                    dev_lights,
+                                                    sceneInfo.numLights,
+                                                    width,
+                                                    height);
+    checkCUDAError("inverse fragment shader");
+    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, width, height,
+                                                   bufferBeginWidth, bufferBeginHeight,
+                                                   bufferWidth, bufferHeight,
+                                                   dev_framebuffer);
+    checkCUDAError("copy render result to pbo");
+}
+
 void Render::renderTex(int texIndex)
 {
     // Assume show the first texture of the first primitive of the first mesh
@@ -462,6 +478,7 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
                     Tex roughnessTex{nullptr,0,0};
                     Tex emissionTex{nullptr,0,0};
                     Tex environmentTex{nullptr,0,0};
+                    Tex bakedTex{nullptr,0,0};
 
 
                     if (!primitive.material.empty()) {
@@ -474,6 +491,7 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
                         _initTex(scene, mat, "roughness", roughnessTex);
                         _initTex(scene, mat, "emission", emissionTex);
                         _initTex(scene, mat, "environment", environmentTex);
+                        _initTex(scene, mat, "bake", bakedTex);
                     }
 
                     // Generate material info according to texture;
@@ -518,7 +536,8 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
                              normalTex,
                              roughnessTex,
                              emissionTex,
-                             environmentTex},
+                             environmentTex,
+                             bakedTex},
 
                             dev_vertexOut	//VertexOut
                     });

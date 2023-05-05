@@ -113,6 +113,14 @@ glm::vec3 _sampleTex(const TextureData *tex, const unsigned int &index)
 }
 
 __device__ static
+void _writeTex(TextureData *tex, const unsigned int &index, const glm::vec3 &value)
+{
+    tex[index * 3] = glm::clamp(value.x, 0.0f, 1.0f) * 255.0;
+    tex[index * 3 + 1] = glm::clamp(value.y, 0.0f, 1.0f) * 255.0;
+    tex[index * 3 + 2] = glm::clamp(value.z, 0.0f, 1.0f) * 255.0;
+}
+
+__device__ static
 glm::vec3 sampleTex2d(const Tex &tex, const glm::vec2 &UV)
 {
     if(tex.data==nullptr || UV.x<0 || UV.x>=1 || UV.y<0 || UV.y>=1)
@@ -138,6 +146,12 @@ glm::vec3 sampleTex2d(const Tex &tex, const glm::vec2 &UV)
 	return glm::mix(glm::mix(color1, color2, x_gap),
                     glm::mix(color3, color4, x_gap),
                     y_gap);
+}
+
+__device__ static
+void inverseSampleTex2d(Tex &tex, const glm::vec2 &UV, const glm::vec3 &grad)
+{
+
 }
 
 __device__  static
@@ -226,7 +240,6 @@ glm::vec3 getTangentAtCoordinate(const glm::vec2 *uv, const glm::vec4 *pos, cons
     glm::vec3 bit;
     glm::vec3 nor;// = normal;
 
-
     if (dino != 0.0f)
     {
         tan = glm::normalize( (UV2.y * Pos1 - UV1.y * Pos2) / dino );
@@ -248,18 +261,16 @@ glm::vec3 getTangentAtCoordinate(const glm::vec2 *uv, const glm::vec4 *pos, cons
         tan = -(tan);
     }
 
-
     bit = glm::normalize(glm::cross(normal, tan));
     tan = glm::normalize(glm::cross(bit, normal));
 
-
-//    glm::mat4 tbn;
-//
-//    tbn[0] = glm::vec4(tan, 0.0f);
-//    tbn[1] = glm::vec4(bit, 0.0f);
-//    tbn[2] = glm::vec4(normal, 0.0f);
-//    tbn[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-
-
     return tan;
+}
+
+__device__ static
+glm::mat3 getTBN(const glm::vec3 &tangent, const glm::vec3 &normal)
+{
+    return {glm::normalize(tangent),
+            glm::normalize(glm::cross(normal, tangent)),
+            glm::normalize(normal)};
 }

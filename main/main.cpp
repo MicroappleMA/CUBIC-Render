@@ -150,19 +150,18 @@ void runCuda() {
 
     // cudaGLMapBufferObject((void **)&dptr, pbo);
 
-    Render::getInstance().setPboConfig(2 * width, 0);
     Render::getInstance().overrideMaterial = currentMaterial;
+
+    Render::getInstance().setPboConfig(2 * width, 0);
     Render::getInstance().render(M, V, P);
     cudaDeviceSynchronize();
 
     Render::getInstance().setPboConfig(width, 0);
-    Render::getInstance().overrideMaterial = Tex0;
-    Render::getInstance().render(M, V, P);
+    Render::getInstance().inverseRender();
     cudaDeviceSynchronize();
 
     Render::getInstance().setPboConfig(0, 0);
-    Render::getInstance().overrideMaterial = Invalid;
-    Render::getInstance().renderTex(0);
+    Render::getInstance().renderTex(6); // Render Baked Texture
     cudaDeviceSynchronize();
 
     // cudaGLUnmapBufferObject(pbo);
@@ -375,6 +374,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
         BIND_MATERIAL_KEY(4);
         BIND_MATERIAL_KEY(5);
         BIND_MATERIAL_KEY(6);
+        BIND_MATERIAL_KEY(7);
     }
 }
 

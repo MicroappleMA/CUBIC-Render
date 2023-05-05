@@ -24,6 +24,7 @@ public:
               const int &w, const int &h, const int &beginW, const int &beginH,
               const int &bufferW, const int &bufferH, uchar4* const pbo);
     void render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P);
+    void inverseRender();
     void free();
     void setPboConfig(const int &beginW = -1, const int &beginH = -1,
                       const int &bufferW = -1, const int &bufferH = -1,
