@@ -61,6 +61,12 @@ void _vertexTransform(
     }
 }
 
+__global__
+void _inverseVertexTransform(int numVertices,PrimitiveBuffer primitive,glm::mat4 M, glm::mat4 V, glm::mat4 P,int width, int height)
+{
+
+}
+
 
 __global__
 void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveBuffer primitive) {
@@ -86,7 +92,27 @@ void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_
 
         geometryShader(dev_primitives[pid]);
     }
+}
 
+__global__
+void _inversePrimitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveBuffer primitive)
+{
+
+}
+
+__global__
+void _clearTileBuffer(Tile* dev_tileBuffer, int width, int height, int tileSize)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idy = blockIdx.y * blockDim.y + threadIdx.y;
+
+    const int maxTileNumX = (width + tileSize - 1)/tileSize;
+    const int maxTileNumY = (height + tileSize - 1)/tileSize;
+
+    if (idx < maxTileNumX && idy < maxTileNumY)
+    {
+        dev_tileBuffer[idx + idy * maxTileNumX].numPrimitives = 0;
+    }
 }
 
 __global__
@@ -123,7 +149,6 @@ void _generateTileBuffer(int numPrimitives, Primitive* dev_primitives, Tile* dev
                 dev_tileBuffer[tid].primitiveId[id] = pid;
         }
     }
-
 }
 
 #define INTERPOLATE(frag, vert, coef, attri) {frag.in.attri = vert[0].attri * coef.x + vert[1].attri * coef.y + vert[2].attri * coef.z;}
@@ -217,6 +242,12 @@ void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_f
     // Copy data from shared memory to global memory
     // one thread per fragment
     dev_fragmentBuffer[pos] = tileFragment[tilePos];
+}
+
+__global__
+void _inverseRasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_fragmentBuffer, int width, int height, int tileSize)
+{
+
 }
 
 /**

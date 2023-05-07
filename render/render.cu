@@ -27,52 +27,51 @@
 ///                      Render Pipeline                     ///
 ////////////////////////////////////////////////////////////////
 
-void Render::render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P) {
-	// Execute your rasterization pipeline here
-	// (See README for rasterization pipeline outline.)
+void Render::render(const glm::mat4 & Model, const glm::mat4 & View, const glm::mat4 & Projection) {
+    // Execute your rasterization pipeline here
+    // (See README for rasterization pipeline outline.)
 
-	// Vertex Process & primitive assembly
-	{
+    M = Model;
+    V = View;
+    P = Projection;
+
+    // Vertex Process & primitive assembly
+    {
         int curPrimitiveBeginId = 0; // change static to non-static
-		dim3 numThreadsPerBlock(defaultThreadPerBlock);
+        dim3 numThreadsPerBlock(defaultThreadPerBlock);
 
-		auto it = sceneInfo.mesh2PrimitivesMap.begin();
-		auto itEnd = sceneInfo.mesh2PrimitivesMap.end();
-
-		for (; it != itEnd; ++it) {
-			auto p = (it->second).begin();	// each primitive
-			auto pEnd = (it->second).end();
-			for (; p != pEnd; ++p) {
-				dim3 numBlocksForVertices((p->numVertices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
-				dim3 numBlocksForIndices((p->numIndices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
+        for(auto&& primitive:sceneInfo.mesh2PrimitivesMap)
+        {
+            for(auto&& p:primitive.second)
+            {
+                dim3 numBlocksForVertices((p.numVertices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
+                dim3 numBlocksForIndices((p.numIndices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
 
                 _vertexTransform<<<numBlocksForVertices, numThreadsPerBlock>>>
-                        (p->numVertices,
-                         *p,
+                        (p.numVertices,
+                         p,
                          M, V, P,
                          width,
                          height);
-				checkCUDAError("Vertex Processing");
-				cudaDeviceSynchronize();
-				_primitiveAssembly<<<numBlocksForIndices, numThreadsPerBlock>>>
-					(p->numIndices, 
-					curPrimitiveBeginId, 
-					dev_primitives, 
-					*p);
-				checkCUDAError("Primitive Assembly");
+                checkCUDAError("Vertex Processing");
+                _primitiveAssembly<<<numBlocksForIndices, numThreadsPerBlock>>>
+                        (p.numIndices,
+                         curPrimitiveBeginId,
+                         dev_primitives,
+                         p);
+                checkCUDAError("Primitive Assembly");
 
-				curPrimitiveBeginId += p->numPrimitives;
-			}
-		}
+                curPrimitiveBeginId += p.numPrimitives;
+            }
+        }
 
-		checkCUDAError("Vertex Processing and Primitive Assembly");
-	}
+        checkCUDAError("Vertex Processing and Primitive Assembly");
+    }
 
-    cudaMemset(dev_tileBuffer, 0, ((width + tileSize - 1) / tileSize) * ((height + tileSize - 1) / tileSize) * sizeof(Tile));
-    checkCUDAError("_clearBuffer");
-
-    // TODO: render
     {
+        _clearTileBuffer<<<blockCount2d,1,1>>>(dev_tileBuffer,width,height,tileSize);
+        checkCUDAError("Clear Tile Buffer");
+
         dim3 numThreadsPerBlock = defaultThreadPerBlock;
         dim3 numBlocks = (sceneInfo.numPrimitives + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x;
         _generateTileBuffer<<<numBlocks,numThreadsPerBlock>>>
@@ -82,7 +81,7 @@ void Render::render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & 
                  width,
                  height,
                  tileSize);
-        checkCUDAError("_generateTileBuffer");
+        checkCUDAError("Generate Tile Buffer");
 
         _rasterize<<<blockCount2d,blockSize2d,tileSize*tileSize*sizeof(Fragment)>>>
                 (dev_primitives,
@@ -91,45 +90,85 @@ void Render::render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & 
                  width,
                  height,
                  tileSize);
-        checkCUDAError("_rasterize");
+        checkCUDAError("Rasterize");
 
     }
 
-
-    cudaMemset(dev_framebuffer, 0, width * height * sizeof(glm::vec3));
-
     // Copy depthbuffer colors into framebuffer
-	_fragmentShading<<<blockCount2d, blockSize2d>>>(dev_framebuffer,
+    _fragmentShading<<<blockCount2d, blockSize2d>>>(dev_framebuffer,
                                                     dev_fragmentBuffer,
                                                     dev_lights,
                                                     sceneInfo.numLights,
                                                     overrideMaterial,
                                                     width,
                                                     height);
-	checkCUDAError("fragment shader");
+    checkCUDAError("Fragment Shader");
 
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
     _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, width, height,
                                                    bufferBeginWidth, bufferBeginHeight,
                                                    bufferWidth, bufferHeight,
                                                    dev_framebuffer);
-    checkCUDAError("copy render result to pbo");
+    checkCUDAError("Copy Render Result To Pbo");
 }
 
 void Render::inverseRender()
 {
     _inverseFragmentShading<<<blockCount2d, blockSize2d>>>(dev_framebuffer,
-                                                    dev_fragmentBuffer,
-                                                    dev_lights,
-                                                    sceneInfo.numLights,
-                                                    width,
-                                                    height);
-    checkCUDAError("inverse fragment shader");
+                                                           dev_fragmentBuffer,
+                                                           dev_lights,
+                                                           sceneInfo.numLights,
+                                                           width,
+                                                           height);
+    checkCUDAError("Inverse Fragment Shader");
+
+    _inverseRasterize<<<blockCount2d,blockSize2d,tileSize*tileSize*sizeof(Fragment)>>>
+            (dev_primitives,
+             dev_tileBuffer,
+             dev_fragmentBuffer,
+             width,
+             height,
+             tileSize);
+    checkCUDAError("Inverse Rasterize");
+
+    {
+        int curPrimitiveBeginId = 0;
+        dim3 numThreadsPerBlock(defaultThreadPerBlock);
+
+        for(auto&& primitive:sceneInfo.mesh2PrimitivesMap)
+        {
+            for(auto&& p:primitive.second)
+            {
+                dim3 numBlocksForVertices((p.numVertices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
+                dim3 numBlocksForIndices((p.numIndices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
+
+                _inversePrimitiveAssembly<<<numBlocksForIndices, numThreadsPerBlock>>>
+                        (p.numIndices,
+                         curPrimitiveBeginId,
+                         dev_primitives,
+                         p);
+                checkCUDAError("Inverse Primitive Assembly");
+
+                _inverseVertexTransform<<<numBlocksForVertices, numThreadsPerBlock>>>
+                        (p.numVertices,
+                         p,
+                         M, V, P,
+                         width,
+                         height);
+                checkCUDAError("Inverse Vertex Processing");
+
+                curPrimitiveBeginId += p.numPrimitives;
+            }
+        }
+
+        checkCUDAError("Inverse Vertex Processing and Primitive Assembly");
+    }
+
     _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, width, height,
                                                    bufferBeginWidth, bufferBeginHeight,
                                                    bufferWidth, bufferHeight,
                                                    dev_framebuffer);
-    checkCUDAError("copy render result to pbo");
+    checkCUDAError("Inverse Copy Image To PBO");
 }
 
 void Render::renderTex(int texIndex)

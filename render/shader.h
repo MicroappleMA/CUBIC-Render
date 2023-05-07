@@ -211,13 +211,15 @@ void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsig
                             R.y > color.y ? 1.0f - color.y : color.y - 1.0f,
                             R.z > color.z ? 1.0f - color.z : color.z - 1.0f};
 
-        glm::vec3 gradRM = glm::mix({1.0f,1.0f,1.0f},N,x);
-        glm::vec3 gradRN = glm::mix({1.0f,1.0f,1.0f},M,1-x);
+        const glm::vec3 vecOne = {1.0f,1.0f,1.0f};
 
-        glm::vec3 gradMA = glm::mix({1.0f,1.0f,1.0f},C,y);
-        glm::vec3 gradMC = glm::mix({1.0f,1.0f,1.0f},A,1-y);
-        glm::vec3 gradNB = glm::mix({1.0f,1.0f,1.0f},D,y);
-        glm::vec3 gradND = glm::mix({1.0f,1.0f,1.0f},B,1-y);
+        glm::vec3 gradRM = glm::mix(vecOne,N,x);
+        glm::vec3 gradRN = glm::mix(vecOne,M,1-x);
+
+        glm::vec3 gradMA = glm::mix(vecOne,C,y);
+        glm::vec3 gradMC = glm::mix(vecOne,A,1-y);
+        glm::vec3 gradNB = glm::mix(vecOne,D,y);
+        glm::vec3 gradND = glm::mix(vecOne,B,1-y);
 
         // Chain Rule
         glm::vec3 gradLA = gradLR * gradRM * gradMA;
@@ -236,11 +238,10 @@ void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsig
         _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, B);
         _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, C);
         _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, D);
-//        _writeTex(bakedTex.data, W1 + H1 * bakedTex.width, color);
-//        _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, color);
-//        _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, color);
-//        _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, color);
-
+        // _writeTex(bakedTex.data, W1 + H1 * bakedTex.width, color);
+        // _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, color);
+        // _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, color);
+        // _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, color);
 
         color = R;
     }

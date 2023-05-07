@@ -13,19 +13,28 @@
 
 
 __global__
-void _vertexTransform(int numVertices,
-                      PrimitiveBuffer primitive,
-                      glm::mat4 M, glm::mat4 V, glm::mat4 P,
-                      int width, int height);
+void _vertexTransform(int numVertices,PrimitiveBuffer primitive,glm::mat4 M, glm::mat4 V, glm::mat4 P,int width, int height);
+
+__global__
+void _inverseVertexTransform(int numVertices,PrimitiveBuffer primitive,glm::mat4 M, glm::mat4 V, glm::mat4 P,int width, int height);
 
 __global__
 void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveBuffer primitive);
+
+__global__
+void _inversePrimitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveBuffer primitive);
+
+__global__
+void _clearTileBuffer(Tile* dev_tileBuffer, int width, int height, int tileSize);
 
 __global__
 void _generateTileBuffer(int numPrimitives, Primitive* dev_primitives, Tile* dev_tileBuffer, int width, int height, int tileSize);
 
 __global__
 void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_fragmentBuffer, int width, int height, int tileSize);
+
+__global__
+void _inverseRasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_fragmentBuffer, int width, int height, int tileSize);
 
 __global__
 void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *light, unsigned int lightNum, MaterialType overrideMaterial, int w, int h);

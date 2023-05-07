@@ -61,6 +61,8 @@ private:
     glm::vec3 *dev_framebuffer = nullptr;
 
     Light *dev_lights = nullptr;
+
+    glm::mat4 M,V,P;
 };
 
 

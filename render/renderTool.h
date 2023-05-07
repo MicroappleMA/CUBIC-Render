@@ -13,7 +13,6 @@
 #include "util/utilityCore.hpp"
 #include "dataType.h"
 
-// CHECKITOUT
 /**
  * Finds the axis aligned bounding box for a given triangle.
  */
@@ -31,7 +30,6 @@ AABB getAABBForTriangle(const glm::vec3 *tri) {
     return aabb;
 }
 
-// CHECKITOUT
 /**
  * Calculate the signed area of a given triangle.
  */
@@ -40,7 +38,6 @@ float calculateSignedArea(const glm::vec3 *tri) {
     return 0.5f * ((tri[2].x - tri[0].x) * (tri[1].y - tri[0].y) - (tri[1].x - tri[0].x) * (tri[2].y - tri[0].y));
 }
 
-// CHECKITOUT
 /**
  * Helper function for calculating barycentric coordinates.
  */
@@ -53,7 +50,6 @@ float calculateBarycentricCoordinateValue(const glm::vec2 &a, const glm::vec2 &b
     return calculateSignedArea(baryTri) / calculateSignedArea(tri);
 }
 
-// CHECKITOUT
 /**
  * Calculate barycentric coordinates.
  */
@@ -65,7 +61,6 @@ glm::vec3 calculateBarycentricCoordinate(const glm::vec3 *tri, const glm::vec2 &
     return {alpha, beta, gamma};
 }
 
-// CHECKITOUT
 /**
  * Check if a barycentric coordinate is within the boundaries of a triangle.
  */
@@ -76,7 +71,6 @@ bool isBarycentricCoordInBounds(const glm::vec3 &barycentricCoord) {
            barycentricCoord.z >= 0.0 && barycentricCoord.z <= 1.0;
 }
 
-// CHECKITOUT
 /**
  * For a given barycentric coordinate, compute the corresponding z position
  * (i.e. depth) on the triangle.
