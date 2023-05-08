@@ -31,12 +31,6 @@ bool utilityCore::replaceString(std::string &str, const std::string &from, const
     return true;
 }
 
-std::string utilityCore::convertIntToString(int number) {
-    std::stringstream ss;
-    ss << number;
-    return ss.str();
-}
-
 glm::vec3 utilityCore::clampRGB(glm::vec3 color) {
     if (color[0] < 0) {
         color[0] = 0;

@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
     vsync = config["vsync"];
     width = config["width"];
     height = config["height"];
+    inverseRender = config["inverseRender"];
     string modelPath = config["model"];
 
     cout<<"Width = "<<width<<", Height = "<<height<<", VSync = "<<vsync<<"\nModel = "<<modelPath<<"\n";
@@ -106,12 +107,12 @@ void mainLoop() {
             seconds = seconds2;
         }
 
-        string title = "CUDA Rasterizer | " + utilityCore::convertIntToString((int)fps) + " FPS";
+        string title = "CUDA Rasterizer | " + to_string((int)fps) + " FPS";
         glfwSetWindowTitle(window, title.c_str());
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
         glBindTexture(GL_TEXTURE_2D, displayImage);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 3 * width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, inverseRender?3 * width:width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // VAO, shader program, and texture already bound
@@ -156,17 +157,26 @@ void runCuda() {
 
     Render::getInstance().overrideMaterial = currentMaterial;
 
-    Render::getInstance().setPboConfig(2 * width, 0);
-    Render::getInstance().render(M, V, P);
-    cudaDeviceSynchronize();
+    if (inverseRender)
+    {
+        Render::getInstance().setPboConfig(2 * width, 0);
+        Render::getInstance().render(M, V, P);
+        cudaDeviceSynchronize();
 
-    Render::getInstance().setPboConfig(width, 0);
-    Render::getInstance().inverseRender();
-    cudaDeviceSynchronize();
+        Render::getInstance().setPboConfig(width, 0);
+        Render::getInstance().inverseRender();
+        cudaDeviceSynchronize();
 
-    Render::getInstance().setPboConfig(0, 0);
-    Render::getInstance().renderTex(6); // Render Baked Texture
-    cudaDeviceSynchronize();
+        Render::getInstance().setPboConfig(0, 0);
+        Render::getInstance().renderTex(6); // Render Baked Texture
+        cudaDeviceSynchronize();
+    }
+    else
+    {
+        Render::getInstance().render(M, V, P);
+        cudaDeviceSynchronize();
+    }
+
 
     // cudaGLUnmapBufferObject(pbo);
 
@@ -186,7 +196,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
     }
 
     glfwWindowHint(GLFW_DOUBLEBUFFER, vsync);
-    window = glfwCreateWindow(3 * width, height, "", NULL, NULL);
+    window = glfwCreateWindow(inverseRender?3 * width:width, height, "", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return false;
@@ -225,7 +235,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
     }
 
 
-    Render::getInstance().init(scene, light, width, height, 0, 0, 3 * width, height, dptr);
+    Render::getInstance().init(scene, light, width, height, 0, 0, inverseRender?3 * width:width, height, dptr);
 
     GLuint passthroughProgram;
     passthroughProgram = initShader();
@@ -238,7 +248,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
 
 void initPBO() {
     // set up vertex data parameter
-    int num_texels = 3 * width * height;
+    int num_texels = (inverseRender?3:1) * width * height;
     int num_values = num_texels * 4;
     int size_tex_data = sizeof(GLubyte) * num_values;
 
@@ -267,7 +277,7 @@ void initTextures() {
     glBindTexture(GL_TEXTURE_2D, displayImage);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, 3 * width, height, 0, GL_BGRA,
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, inverseRender?3 * width:width, height, 0, GL_BGRA,
                   GL_UNSIGNED_BYTE, NULL);
 }
 

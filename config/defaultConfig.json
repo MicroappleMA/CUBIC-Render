@@ -1,7 +1,8 @@
 {
-  "vsync": false,
   "width": 500,
   "height": 500,
+  "vsync": false,
+  "inverseRender": true,
   "model": "./gltfs/Johanna/Johanna.gltf",
   "lights": [
     {
