@@ -168,7 +168,11 @@ void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsig
 {
     VertexOut &in = frag.in;
 
-    const float learningRate = 0.05;
+    const float learningRate = 0.1;
+    const float maxGradient = 0.5;
+    const float blurCoefMain = 0.95;
+    const float blurCoefOther = (1 - blurCoefMain) / 3;
+    const glm::vec3 vecOne = {1.0f,1.0f,1.0f};
 
     //assume Tex[6] is the texture that is waiting for baking
     const int bakedTexIndex = 6;
@@ -200,18 +204,15 @@ void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsig
 
         glm::vec3 M = glm::mix(A, C, y);
         glm::vec3 N = glm::mix(B, D, y);
-
         glm::vec3 R = glm::mix(M, N, x);
 
         // L1 Loss Function
         glm::vec3 loss = glm::abs(R - color);
 
         // Calc Partial Gradient
-        glm::vec3 gradLR = {R.x > color.x ? 1.0f - color.x : color.x - 1.0f,
-                            R.y > color.y ? 1.0f - color.y : color.y - 1.0f,
-                            R.z > color.z ? 1.0f - color.z : color.z - 1.0f};
-
-        const glm::vec3 vecOne = {1.0f,1.0f,1.0f};
+        glm::vec3 gradLR = {R.x > color.x ? 2.0f - color.x : color.x - 2.0f,
+                            R.y > color.y ? 2.0f - color.y : color.y - 2.0f,
+                            R.z > color.z ? 2.0f - color.z : color.z - 2.0f};
 
         glm::vec3 gradRM = glm::mix(vecOne,N,x);
         glm::vec3 gradRN = glm::mix(vecOne,M,1-x);
@@ -220,6 +221,16 @@ void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsig
         glm::vec3 gradMC = glm::mix(vecOne,A,1-y);
         glm::vec3 gradNB = glm::mix(vecOne,D,y);
         glm::vec3 gradND = glm::mix(vecOne,B,1-y);
+
+
+        // Clamp Gradient To Avoid Explosion
+        gradLR = glm::clamp(gradLR,-maxGradient,maxGradient);
+        gradRM = glm::clamp(gradRM,-maxGradient,maxGradient);
+        gradRN = glm::clamp(gradRN,-maxGradient,maxGradient);
+        gradMA = glm::clamp(gradMA,-maxGradient,maxGradient);
+        gradMC = glm::clamp(gradMC,-maxGradient,maxGradient);
+        gradNB = glm::clamp(gradNB,-maxGradient,maxGradient);
+        gradND = glm::clamp(gradND,-maxGradient,maxGradient);
 
         // Chain Rule
         glm::vec3 gradLA = gradLR * gradRM * gradMA;
@@ -233,16 +244,19 @@ void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsig
         C -= gradLC * learningRate;
         D -= gradLD * learningRate;
 
+        // Blur Texture To Denoise
+        A = blurCoefMain * A + blurCoefOther * B + blurCoefOther * C + blurCoefOther * D;
+        B = blurCoefOther * A + blurCoefMain * B + blurCoefOther * C + blurCoefOther * D;
+        C = blurCoefOther * A + blurCoefOther * B + blurCoefMain * C + blurCoefOther * D;
+        D = blurCoefOther * A + blurCoefOther * B + blurCoefOther * C + blurCoefMain * D;
+
         // Write Back
         _writeTex(bakedTex.data, W1 + H1 * bakedTex.width, A);
         _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, B);
         _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, C);
         _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, D);
-        // _writeTex(bakedTex.data, W1 + H1 * bakedTex.width, color);
-        // _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, color);
-        // _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, color);
-        // _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, color);
 
-        color = R;
+        color = R; // Display Texture
+        // color = loss; // Display Loss
     }
 }

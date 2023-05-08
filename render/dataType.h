@@ -10,7 +10,7 @@
 
 #include "external/include/glm/glm.hpp"
 
-static const unsigned int tileSize = 8;
+static const unsigned int tileSize = 4;
 static const unsigned int maxPrimitivesPerTile = 1024;
 static const unsigned int defaultThreadPerBlock = 256;
 static const unsigned int maxTexNum = 8;

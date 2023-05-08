@@ -35,6 +35,7 @@ using namespace std;
 //-------------------------------
 //------------GL STUFF-----------
 //-------------------------------
+bool vsync = true;
 int frame;
 int fpstracker;
 double seconds;

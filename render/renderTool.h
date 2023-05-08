@@ -109,9 +109,9 @@ glm::vec3 _sampleTex(const TextureData *tex, const unsigned int &index)
 __device__ static
 void _writeTex(TextureData *tex, const unsigned int &index, const glm::vec3 &value)
 {
-    tex[index * 3]     = glm::clamp(value.x, 0.0f, 1.0f) * 255.0;
-    tex[index * 3 + 1] = glm::clamp(value.y, 0.0f, 1.0f) * 255.0;
-    tex[index * 3 + 2] = glm::clamp(value.z, 0.0f, 1.0f) * 255.0;
+    tex[index * 3]     = glm::clamp(value.x, 0.0f, 1.0f) * 255;
+    tex[index * 3 + 1] = glm::clamp(value.y, 0.0f, 1.0f) * 255;
+    tex[index * 3 + 2] = glm::clamp(value.z, 0.0f, 1.0f) * 255;
 }
 
 __device__ static

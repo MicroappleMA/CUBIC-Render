@@ -1,6 +1,7 @@
 {
-  "width": 1000,
-  "height": 1000,
+  "vsync": false,
+  "width": 500,
+  "height": 500,
   "model": "./gltfs/Johanna/Johanna.gltf",
   "lights": [
     {

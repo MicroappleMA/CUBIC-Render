@@ -27,11 +27,12 @@ int main(int argc, char **argv) {
     std::ifstream ifs(argv[1]);
     nlohmann::json config = nlohmann::json::parse(ifs);
 
+    vsync = config["vsync"];
     width = config["width"];
     height = config["height"];
     string modelPath = config["model"];
 
-    cout<<"Width = "<<width<<", Height = "<<height<<"\nModel = "<<modelPath<<"\n";
+    cout<<"Width = "<<width<<", Height = "<<height<<", VSync = "<<vsync<<"\nModel = "<<modelPath<<"\n";
 
     // Load light info from json
     vector<Light> light;
@@ -115,7 +116,10 @@ void mainLoop() {
 
         // VAO, shader program, and texture already bound
         glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_SHORT, 0);
-        glfwSwapBuffers(window);
+        if(vsync)
+            glfwSwapBuffers(window);
+        else
+            glFlush();
     }
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -181,6 +185,7 @@ bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
         return false;
     }
 
+    glfwWindowHint(GLFW_DOUBLEBUFFER, vsync);
     window = glfwCreateWindow(3 * width, height, "", NULL, NULL);
     if (!window) {
         glfwTerminate();
