@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # Only support Windows and Visual Studio build toolchain
-project(cuda_rasterizer CUDA CXX)
+project(CUBIC-Render CUDA CXX)
 
 # CUDA
 find_package(CUDA 12.0 REQUIRED)

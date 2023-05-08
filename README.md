@@ -1,22 +1,10 @@
-CUDA Rasterizer
+CUBIC Render
 ===============
-
-[CLICK ME FOR INSTRUCTION OF THIS PROJECT](./INSTRUCTION.md)
-
-**University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 4**
-
-* (TODO) YOUR NAME HERE
-	* (TODO) [LinkedIn](), [personal website](), [twitter](), etc.
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
-
-### (TODO: Your README)
-
-*DO NOT* leave the README to the last minute! It is a crucial part of the
-project, and we will not be able to grade you without a good README.
 
 
 ### Credits
 
+* [Code Framework](https://github.com/CIS565-Fall-2018/Project4-CUDA-Rasterizer) by [University of Pennsylvania, CIS 565](https://cis565-fall-2022.github.io/)
+* [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/1.0) by  [Khronos Group](https://github.com/KhronosGroup)
 * [tinygltfloader](https://github.com/syoyo/tinygltfloader) by [@soyoyo](https://github.com/syoyo)
 * [json](https://github.com/nlohmann/json) by [@nlohmann](https://github.com/nlohmann)
-* [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models)

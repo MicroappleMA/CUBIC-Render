@@ -14,7 +14,7 @@
 
 int main(int argc, char **argv) {
 #ifdef DEBUG
-    cout << "CUDA Rasterizer :: Debug Version\n";
+    cout << "CUBIC Render :: Debug Version\n";
 #else
     cout << "CUDA Rasterizer :: Release Version\n";
 #endif
@@ -107,7 +107,7 @@ void mainLoop() {
             seconds = seconds2;
         }
 
-        string title = "CUDA Rasterizer | " + to_string((int)fps) + " FPS";
+        string title = "CUBIC Render | " + to_string((int)fps) + " FPS";
         glfwSetWindowTitle(window, title.c_str());
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
