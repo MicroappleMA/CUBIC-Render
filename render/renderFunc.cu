@@ -90,7 +90,8 @@ void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_
         }
         // TODO: other primitive types (point, line)
 
-        geometryShader(dev_primitives[pid]);
+        if (vid == 0)
+            geometryShader(dev_primitives[pid]);
     }
 }
 
