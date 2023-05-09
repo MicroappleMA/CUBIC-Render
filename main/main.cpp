@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 #ifdef DEBUG
     cout << "CUBIC Render :: Debug Version\n";
 #else
-    cout << "CUDA Rasterizer :: Release Version\n";
+    cout << "CUBIC Render :: Release Version\n";
 #endif
     if (argc != 2) {
         cout << "Usage: [Config Path]. Press Enter to exit\n";

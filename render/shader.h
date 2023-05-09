@@ -27,17 +27,11 @@ VertexOut vertexShader(const VertexIn &in, const glm::mat4 &M, const glm::mat4 &
     vertexOut.clipPos = P * vertexOut.viewPos;
     vertexOut.clipPos /= vertexOut.clipPos.w;
     vertexOut.objectNor = in.normal;
-    vertexOut.worldNor = glm::transpose(glm::inverse(glm::mat3(M))) * vertexOut.objectNor;
-    vertexOut.viewNor = glm::transpose(glm::inverse(glm::mat3(V))) * vertexOut.worldNor;
+    vertexOut.worldNor = glm::normalize(glm::transpose(glm::inverse(glm::mat3(M))) * vertexOut.objectNor);
+    vertexOut.viewNor = glm::normalize(glm::transpose(glm::inverse(glm::mat3(V))) * vertexOut.worldNor);
     vertexOut.uv = in.uv;
 
     // windowPos,material,tex are auto generate
-
-    // TODO: Apply vertex transformation here
-    // Multiply the MVP matrix for each vertex position, this will transform everything into clipping space
-    // Then divide the pos by its w element to transform into NDC space
-    // Finally transform x and y to viewport space
-
 
     return vertexOut;
 }
@@ -157,8 +151,6 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
             color = pbrShader(frag, light, lightNum);
             break;
     }
-
-    // TODO: add your fragment shader code here
 
     return color;
 }
