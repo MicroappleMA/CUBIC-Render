@@ -29,11 +29,7 @@
 ////////////////////////////////////////////////////////////////
 
 __global__
-void _vertexTransform(
-        int numVertices,
-        PrimitiveBuffer primitive,
-        glm::mat4 M, glm::mat4 V, glm::mat4 P,
-        int width, int height) {
+void _vertexTransform(int numVertices,PrimitiveBuffer primitive,glm::mat4 M, glm::mat4 V, glm::mat4 P,int width, int height) {
 
     // vertex id
     int vid = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -69,7 +65,7 @@ void _inverseVertexTransform(int numVertices,PrimitiveBuffer primitive,glm::mat4
 
 
 __global__
-void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveBuffer primitive) {
+void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* __restrict__ dev_primitives, PrimitiveBuffer primitive) {
 
     // index id
     int iid = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -96,13 +92,13 @@ void _primitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_
 }
 
 __global__
-void _inversePrimitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* dev_primitives, PrimitiveBuffer primitive)
+void _inversePrimitiveAssembly(int numIndices, int curPrimitiveBeginId, Primitive* __restrict__ dev_primitives, PrimitiveBuffer primitive)
 {
 
 }
 
 __global__
-void _clearTileBuffer(Tile* dev_tileBuffer, int width, int height, int tileSize)
+void _clearTileBuffer(Tile* __restrict__ dev_tileBuffer, int width, int height, int tileSize)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -117,7 +113,7 @@ void _clearTileBuffer(Tile* dev_tileBuffer, int width, int height, int tileSize)
 }
 
 __global__
-void _generateTileBuffer(int numPrimitives, Primitive* dev_primitives, Tile* dev_tileBuffer, int width, int height, int tileSize)
+void _generateTileBuffer(int numPrimitives, const Primitive* __restrict__ dev_primitives, Tile* __restrict__ dev_tileBuffer, int width, int height, int tileSize)
 {
     const unsigned int pid = blockIdx.x * blockDim.x + threadIdx.x;
     if(pid>=numPrimitives) return;
@@ -193,12 +189,11 @@ void _initFragment(Fragment &frag)
 {
     // Init Fragment Here
     frag.depth = 1;
-    frag.color = {0,0,0};
     frag.in.material = Invalid;
 }
 
 __global__
-void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_fragmentBuffer, int width, int height, int tileSize)
+void _rasterize(const Primitive* __restrict__ dev_primitives, const Tile* __restrict__ dev_tileBuffer, Fragment* __restrict__ dev_fragmentBuffer, int width, int height, int tileSize)
 {
     extern __shared__ Fragment tileFragment[];
 
@@ -246,7 +241,7 @@ void _rasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_f
 }
 
 __global__
-void _inverseRasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment* dev_fragmentBuffer, int width, int height, int tileSize)
+void _inverseRasterize(Primitive* __restrict__ dev_primitives, Tile* __restrict__ dev_tileBuffer, Fragment* __restrict__ dev_fragmentBuffer, int width, int height, int tileSize)
 {
 
 }
@@ -255,7 +250,7 @@ void _inverseRasterize(Primitive* dev_primitives, Tile* dev_tileBuffer, Fragment
 * Writes fragment colors to the framebuffer
 */
 __global__
-void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *light, unsigned int lightNum, MaterialType overrideMaterial, int w, int h) {
+void _fragmentShading(glm::vec3* __restrict__ framebuffer, Fragment* __restrict__ fragmentBuffer, Light* __restrict__ light, unsigned int lightNum, MaterialType overrideMaterial, int w, int h) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     int index = x + (y * w);
@@ -269,7 +264,7 @@ void _fragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *l
 }
 
 __global__
-void _inverseFragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, Light *light, unsigned int lightNum, int w, int h) {
+void _inverseFragmentShading(glm::vec3* __restrict__ framebuffer, Fragment* __restrict__ fragmentBuffer, Light* __restrict__ light, unsigned int lightNum, int w, int h) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     int index = x + (y * w);
@@ -283,7 +278,7 @@ void _inverseFragmentShading(glm::vec3 *framebuffer, Fragment *fragmentBuffer, L
  * Kernel that writes the image to the OpenGL PBO directly.
  */
 __global__
-void _copyImageToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int bufferW, int bufferH, glm::vec3 *image) {
+void _copyImageToPBO(uchar4* __restrict__ pbo, const glm::vec3* __restrict__ image, int w, int h, int beginW, int beginH, int bufferW, int bufferH) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -301,7 +296,7 @@ void _copyImageToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int buff
 }
 
 __global__
-void _copyTexToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int bufferW, int bufferH, Tex tex) {
+void _copyTexToPBO(uchar4* __restrict__ pbo, Tex tex, int w, int h, int beginW, int beginH, int bufferW, int bufferH) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -317,6 +312,7 @@ void _copyTexToPBO(uchar4 *pbo, int w, int h, int beginW, int beginH, int buffer
         pbo[pboIndex].z = texColor.z * 255.0;
     }
 }
+
 
 ////////////////////////////////////////////////////////////////
 /// Functions that only be called when program start or exit ///

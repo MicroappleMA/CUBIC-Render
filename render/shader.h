@@ -17,7 +17,7 @@
 
 
 __device__ static
-VertexOut vertexShader(const VertexIn &in, const glm::mat4 &M, const glm::mat4 &V, const glm::mat4 &P)
+VertexOut vertexShader(const VertexIn& __restrict__ in, const glm::mat4& __restrict__ M, const glm::mat4& __restrict__ V, const glm::mat4& __restrict__ P)
 {
     VertexOut vertexOut;
 
@@ -37,7 +37,7 @@ VertexOut vertexShader(const VertexIn &in, const glm::mat4 &M, const glm::mat4 &
 }
 
 __device__ static
-void geometryShader(Primitive &prim)
+void geometryShader(Primitive& __restrict__ prim)
 {
     // Calc Tangent
     const glm::vec4 (&pos)[3] = {prim.v[0].worldPos,prim.v[1].worldPos,prim.v[2].worldPos};
@@ -53,7 +53,7 @@ void geometryShader(Primitive &prim)
 }
 
 __device__ static
-glm::vec3 envShader(const Fragment& frag)
+glm::vec3 envShader(const Fragment& __restrict__ frag)
 {
     const VertexOut &in = frag.in;
     glm::mat3 TBN = getTBN(in.tangent, in.worldNor);
@@ -65,7 +65,7 @@ glm::vec3 envShader(const Fragment& frag)
 }
 
 __device__ static
-glm::vec3 pbrShader(const Fragment& frag, Light *light, unsigned int lightNum)
+glm::vec3 pbrShader(const Fragment& __restrict__ frag, const Light* __restrict__ light, unsigned int lightNum)
 {
     glm::vec3 color = {0,0,0};
     const VertexOut &in = frag.in;
@@ -120,7 +120,7 @@ glm::vec3 pbrShader(const Fragment& frag, Light *light, unsigned int lightNum)
 }
 
 __device__ static
-glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightNum)
+glm::vec3 fragmentShader(const Fragment& __restrict__ frag, const Light* __restrict__ light, unsigned int lightNum)
 {
     // Render Pass
     glm::vec3 color = {0,0,0};
@@ -130,7 +130,7 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
         case Invalid:
             break;
         case Depth:
-            color = (1 - frag.depth) / 2 * glm::vec3(1,1,1);
+            color = glm::vec3((1 - frag.depth) / 2);
             break;
         case Mesh:
             color = in.color;
@@ -156,7 +156,7 @@ glm::vec3 fragmentShader(const Fragment& frag, Light *light, unsigned int lightN
 }
 
 __device__ static
-void inverseFragmentShader(glm::vec3 &color, Fragment &frag, Light *light, unsigned int lightNum)
+void inverseFragmentShader(glm::vec3& __restrict__ color, Fragment& __restrict__ frag, const Light* __restrict__ light, unsigned int lightNum)
 {
     VertexOut &in = frag.in;
 

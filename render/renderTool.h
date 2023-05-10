@@ -17,7 +17,7 @@
  * Finds the axis aligned bounding box for a given triangle.
  */
 __host__ __device__ static
-AABB getAABBForTriangle(const glm::vec3 *tri) {
+AABB getAABBForTriangle(const glm::vec3* __restrict__ tri) {
     AABB aabb;
     aabb.min = glm::vec3(
             glm::min(glm::min(tri[0].x, tri[1].x), tri[2].x),
@@ -34,7 +34,7 @@ AABB getAABBForTriangle(const glm::vec3 *tri) {
  * Calculate the signed area of a given triangle.
  */
 __host__ __device__ static
-float calculateSignedArea(const glm::vec3 *tri) {
+float calculateSignedArea(const glm::vec3* __restrict__ tri) {
     return 0.5f * ((tri[2].x - tri[0].x) * (tri[1].y - tri[0].y) - (tri[1].x - tri[0].x) * (tri[2].y - tri[0].y));
 }
 
@@ -42,7 +42,7 @@ float calculateSignedArea(const glm::vec3 *tri) {
  * Helper function for calculating barycentric coordinates.
  */
 __host__ __device__ static
-float calculateBarycentricCoordinateValue(const glm::vec2 &a, const glm::vec2 &b, const glm::vec2 &c, const glm::vec3 *tri) {
+float calculateBarycentricCoordinateValue(const glm::vec2& __restrict__ a, const glm::vec2& __restrict__ b, const glm::vec2& __restrict__ c, const glm::vec3* __restrict__ tri) {
     glm::vec3 baryTri[3];
     baryTri[0] = glm::vec3(a, 0);
     baryTri[1] = glm::vec3(b, 0);
@@ -54,7 +54,7 @@ float calculateBarycentricCoordinateValue(const glm::vec2 &a, const glm::vec2 &b
  * Calculate barycentric coordinates.
  */
 __host__ __device__ static
-glm::vec3 calculateBarycentricCoordinate(const glm::vec3 *tri, const glm::vec2 &point) {
+glm::vec3 calculateBarycentricCoordinate(const glm::vec3* __restrict__ tri, const glm::vec2& __restrict__ point) {
     float beta  = calculateBarycentricCoordinateValue(glm::vec2(tri[0].x, tri[0].y), point, glm::vec2(tri[2].x, tri[2].y), tri);
     float gamma = calculateBarycentricCoordinateValue(glm::vec2(tri[0].x, tri[0].y), glm::vec2(tri[1].x, tri[1].y), point, tri);
     float alpha = 1.0f - beta - gamma;
@@ -65,7 +65,7 @@ glm::vec3 calculateBarycentricCoordinate(const glm::vec3 *tri, const glm::vec2 &
  * Check if a barycentric coordinate is within the boundaries of a triangle.
  */
 __host__ __device__ static
-bool isBarycentricCoordInBounds(const glm::vec3 &barycentricCoord) {
+bool isBarycentricCoordInBounds(const glm::vec3& __restrict__ barycentricCoord) {
     return barycentricCoord.x >= 0.0 && barycentricCoord.x <= 1.0 &&
            barycentricCoord.y >= 0.0 && barycentricCoord.y <= 1.0 &&
            barycentricCoord.z >= 0.0 && barycentricCoord.z <= 1.0;
@@ -76,21 +76,21 @@ bool isBarycentricCoordInBounds(const glm::vec3 &barycentricCoord) {
  * (i.e. depth) on the triangle.
  */
 __host__ __device__ static
-float getZAtCoordinate(const glm::vec3 &barycentricCoord, const glm::vec3 *tri) {
+float getZAtCoordinate(const glm::vec3& __restrict__ barycentricCoord, const glm::vec3* __restrict__ tri) {
     return -(barycentricCoord.x * tri[0].z
            + barycentricCoord.y * tri[1].z
            + barycentricCoord.z * tri[2].z);
 }
 
 __host__ __device__ static
-float getViewZAtCoordinate(const glm::vec3 &barycentricCoord, const glm::vec3 &triViewZ) {
+float getViewZAtCoordinate(const glm::vec3& __restrict__ barycentricCoord, const glm::vec3& __restrict__ triViewZ) {
     return 1 / (barycentricCoord.x / triViewZ.x
               + barycentricCoord.y / triViewZ.y
               + barycentricCoord.z / triViewZ.z);
 }
 
 __host__ __device__ static
-glm::vec3 getInterpolationCoef(const glm::vec3 &barycentricCoord, const glm::vec3 &triViewZ)
+glm::vec3 getInterpolationCoef(const glm::vec3& __restrict__ barycentricCoord, const glm::vec3& __restrict__ triViewZ)
 {
     float viewZ = getViewZAtCoordinate(barycentricCoord,triViewZ);
     return {barycentricCoord.x * viewZ / triViewZ.x,
@@ -99,7 +99,7 @@ glm::vec3 getInterpolationCoef(const glm::vec3 &barycentricCoord, const glm::vec
 }
 
 __device__ static
-glm::vec3 _sampleTex(const TextureData *tex, const unsigned int &index)
+glm::vec3 _sampleTex(const TextureData* __restrict__ tex, const unsigned int& __restrict__ index)
 {
     return {tex[index * 3] / 255.0f,
             tex[index * 3 + 1] / 255.0f,
@@ -107,7 +107,7 @@ glm::vec3 _sampleTex(const TextureData *tex, const unsigned int &index)
 }
 
 __device__ static
-void _writeTex(TextureData *tex, const unsigned int &index, const glm::vec3 &value)
+void _writeTex(TextureData* __restrict__ tex, const unsigned int& __restrict__ index, const glm::vec3& __restrict__ value)
 {
     tex[index * 3]     = glm::clamp(value.x, 0.0f, 1.0f) * 255;
     tex[index * 3 + 1] = glm::clamp(value.y, 0.0f, 1.0f) * 255;
@@ -115,7 +115,7 @@ void _writeTex(TextureData *tex, const unsigned int &index, const glm::vec3 &val
 }
 
 __device__ static
-glm::vec3 sampleTex2d(const Tex &tex, const glm::vec2 &UV)
+glm::vec3 sampleTex2d(const Tex& __restrict__ tex, const glm::vec2& __restrict__ UV)
 {
     if(tex.data==nullptr || UV.x<0 || UV.x>=1 || UV.y<0 || UV.y>=1)
         return {1,0,0}; // Ensure UV is valid
@@ -143,13 +143,13 @@ glm::vec3 sampleTex2d(const Tex &tex, const glm::vec2 &UV)
 }
 
 __device__  static
-float SphericalTheta(const glm::vec3 &v)
+float SphericalTheta(const glm::vec3& __restrict__ v)
 {
     return glm::acos(glm::clamp(v.y, -1.0f, 1.0f));
 }
 
 __device__  static
-float SphericalPhi(const glm::vec3 &v)
+float SphericalPhi(const glm::vec3& __restrict__ v)
 {
     float p = (glm::atan(v.z, v.x));
 
@@ -157,7 +157,7 @@ float SphericalPhi(const glm::vec3 &v)
 }
 
 __device__ static
-glm::vec3 sampleTexCubemap(const Tex &tex, const glm::vec3 &dir)
+glm::vec3 sampleTexCubemap(const Tex& __restrict__ tex, const glm::vec3& __restrict__ dir)
 {
     return sampleTex2d(tex, {SphericalPhi(dir) * INV_2PI, SphericalTheta(dir) * INV_PI});
 }
@@ -194,7 +194,7 @@ float pbrGGX_D(float dotNH, float roughness)
 }
 
 __device__ static
-glm::vec3 pbrGGX_Spec(glm::vec3 Normal, glm::vec3 HalfVec, float Roughness, glm::vec3 SpecularColor, glm::vec2 paraFV)
+glm::vec3 pbrGGX_Spec(const glm::vec3& __restrict__ Normal, const glm::vec3& __restrict__ HalfVec, float Roughness, const glm::vec3& __restrict__ SpecularColor, const glm::vec2& __restrict__ paraFV)
 {
     float NoH = glm::clamp(glm::dot(Normal, HalfVec), 0.0f, 1.0f);
 
@@ -207,7 +207,7 @@ glm::vec3 pbrGGX_Spec(glm::vec3 Normal, glm::vec3 HalfVec, float Roughness, glm:
 }
 
 __device__ static
-glm::vec3 getTangentAtCoordinate(const glm::vec2 *uv, const glm::vec4 *pos, const glm::vec3 &normal)
+glm::vec3 getTangentAtCoordinate(const glm::vec2* __restrict__ uv, const glm::vec4* __restrict__ pos, const glm::vec3& __restrict__ normal)
 {
     float u0 = uv[1].x - uv[0].x;
     float u1 = uv[2].x - uv[0].x;
@@ -256,7 +256,7 @@ glm::vec3 getTangentAtCoordinate(const glm::vec2 *uv, const glm::vec4 *pos, cons
 }
 
 __device__ static
-glm::mat3 getTBN(const glm::vec3 &tangent, const glm::vec3 &normal)
+glm::mat3 getTBN(const glm::vec3& __restrict__ tangent, const glm::vec3& __restrict__ normal)
 {
     return {glm::normalize(tangent),
             glm::normalize(glm::cross(normal, tangent)),

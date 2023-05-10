@@ -90,7 +90,6 @@ struct Primitive {
 };
 
 struct Fragment {
-    glm::vec3 color;
     float depth;
     VertexOut in;
 

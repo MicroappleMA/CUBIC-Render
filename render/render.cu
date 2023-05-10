@@ -105,10 +105,9 @@ void Render::render(const glm::mat4 & Model, const glm::mat4 & View, const glm::
     checkCUDAError("Fragment Shader");
 
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
-    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, width, height,
+    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, dev_framebuffer, width, height,
                                                    bufferBeginWidth, bufferBeginHeight,
-                                                   bufferWidth, bufferHeight,
-                                                   dev_framebuffer);
+                                                   bufferWidth, bufferHeight);
     checkCUDAError("Copy Render Result To Pbo");
 }
 
@@ -164,10 +163,9 @@ void Render::inverseRender()
         checkCUDAError("Inverse Vertex Processing and Primitive Assembly");
     }
 
-    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, width, height,
+    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, dev_framebuffer, width, height,
                                                    bufferBeginWidth, bufferBeginHeight,
-                                                   bufferWidth, bufferHeight,
-                                                   dev_framebuffer);
+                                                   bufferWidth, bufferHeight);
     checkCUDAError("Inverse Copy Image To PBO");
 }
 
@@ -175,9 +173,9 @@ void Render::renderTex(int texIndex)
 {
     // Assume show the first texture of the first primitive of the first mesh
     const Tex &tex = sceneInfo.mesh2PrimitivesMap.begin()->second.begin()->dev_tex[texIndex];
-    _copyTexToPBO<<<blockCount2d, blockSize2d>>>(buffer, width, height,
+    _copyTexToPBO<<<blockCount2d, blockSize2d>>>(buffer, tex, width, height,
                                                  bufferBeginWidth, bufferBeginHeight,
-                                                 bufferWidth, bufferHeight, tex);
+                                                 bufferWidth, bufferHeight);
 }
 
 
