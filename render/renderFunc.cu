@@ -148,8 +148,8 @@ void _generateTileBuffer(int numPrimitives, const Primitive* __restrict__ dev_pr
     }
 }
 
-#define INTERPOLATE(frag, vert, coef, attri) {frag.in.attri = vert[0].attri * coef.x + vert[1].attri * coef.y + vert[2].attri * coef.z;}
-#define COPY(frag, vert, attri) {frag.in.attri = vert[0].attri;}
+#define INTERPOLATE(frag, vert, coef, attri) {(frag).in.attri = (vert)[0].attri * (coef).x + (vert)[1].attri * (coef).y + (vert)[2].attri * (coef).z;}
+#define COPY(frag, vert, attri) {(frag).in.attri = (vert)[0].attri;}
 
 __device__
 Fragment _generateFragment(const glm::vec3 &barycentricCoord, const Primitive &primitive)
