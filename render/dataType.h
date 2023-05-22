@@ -33,7 +33,8 @@ enum MaterialType{
     Normal = 4,
     Tex0 = 5,
     Env = 6,
-    PBR = 7
+    PBR = 7,
+    NPR = 8
 };
 
 enum LightType{

@@ -150,6 +150,9 @@ glm::vec3 fragmentShader(const Fragment& __restrict__ frag, const Light* __restr
         case PBR:
             color = pbrShader(frag, light, lightNum);
             break;
+        case NPR:
+            color = glm::round(pbrShader(frag, light, lightNum) * 4.0f) / 4.0f;
+            break;
     }
 
     return color;
