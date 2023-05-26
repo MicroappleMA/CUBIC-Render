@@ -6,10 +6,11 @@ CUBIC Render
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/c27c2583221b410289df5842eeee6923)](https://app.codacy.com/gh/MicroappleMA/CUBIC-Render/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![GitHub license](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/MicroappleMA/CUBIC-Render/blob/master/LICENSE)
 
+![CUBIC Render Logo](./img/logo.png)
 
 ## Prerequisites
 
-To build CUBIC Render, you must set up following environment.
+To build **CUBIC Render**, you must set up following environment.
 
 - Windows 10/11
 - Visual Studio 2019 (or more recent)
@@ -17,8 +18,37 @@ To build CUBIC Render, you must set up following environment.
 - CMake 3.24 (or more recent)
 
 ## Build
+
 You may execute the **build.bat** or **build_*.bat**. This batch file will generate the projects, and build the **Release**, **RelWithDebInfo**, **Debug** config of **CUBIC Render** automatically. After successful build, you can find the Visual Studio project and binary file at the **build** directory.
 
+## Run
+
+You need to pass the path of configuration file as a parameter to CUBIC Render for running.
+
+```shell
+./CUBIC-Render.exe ./config/defaultConfig.json
+```
+
+## Feature
+
+- **Deferred Shading**
+- **Tiled Based Rendering**
+- **Physical Based Shading**
+- **Inverse Rendering**
+
+## Structure
+- `config`: example configuration files of CUBIC Render
+- `external`: third party libraries that used by CUBIC Render
+- `gltf`: gltf sample models from Khronos
+- `img`: images that used by this readme file
+- `main`: main function that mainly deal with user input and frame output
+- `render`: render pipeline and shaders
+- `util`: utility functions and head-only libraries
+
+## Example
+
+![Example 0](./img/example0.png)
+![Example 1](./img/example1.png)
 
 ## Credits
 

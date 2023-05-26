@@ -3,7 +3,7 @@
   "height": 500,
   "vsync": true,
   "inverseRender": false,
-  "model": "./gltfs/Johanna/Johanna.gltf",
+  "model": "./gltf/Johanna/Johanna.gltf",
   "lights": [
     {
       "type": "point",
