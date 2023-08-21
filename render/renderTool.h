@@ -9,7 +9,7 @@
 #pragma once
 
 #include <cmath>
-#include "external/include/glm/glm.hpp"
+#include "glm/glm.hpp"
 #include "util/utilityCore.hpp"
 #include "dataType.h"
 

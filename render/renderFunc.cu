@@ -15,8 +15,8 @@
 #include <cuda_runtime.h>
 #include "util/checkCUDAError.h"
 #include "util/tiny_gltf_loader.h"
-#include "external/include/glm/gtc/quaternion.hpp"
-#include "external/include/glm/gtx/transform.hpp"
+#include "glm/gtc/quaternion.hpp"
+#include "glm/gtx/transform.hpp"
 
 #include "dataType.h"
 #include "renderTool.h"

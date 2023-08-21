@@ -24,7 +24,16 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    cout<<"Config = "<<argv[1]<<"\n";
+
     std::ifstream ifs(argv[1]);
+
+    if (!ifs) {
+        std::cerr << "Unable to open config file. Press Enter to exit\n";
+        getchar();
+        return 1;   // return with error code 1
+    }
+
     nlohmann::json config = nlohmann::json::parse(ifs);
 
     vsync = config["vsync"];

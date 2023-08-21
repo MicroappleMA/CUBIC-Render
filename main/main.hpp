@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include "gl/glew.h"
+#include "glfw/glfw3.h"
 
 #include <cstdlib>
 #include <ctime>

@@ -14,8 +14,8 @@
 #include <cuda_runtime.h>
 #include <thrust/random.h>
 #include "util/checkCUDAError.h"
-#include "external/include/glm/gtc/quaternion.hpp"
-#include "external/include/glm/gtx/transform.hpp"
+#include "glm/gtc/quaternion.hpp"
+#include "glm/gtx/transform.hpp"
 
 #include "dataType.h"
 #include "renderTool.h"

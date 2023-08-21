@@ -32,6 +32,12 @@ find_library(GLEW_LIBRARY "glew32s" HINTS "${GLEW_LIBRARY_DIR}" REQUIRED)
 # OpenGL
 find_package(OpenGL REQUIRED)
 
+# Vulkan
+set(VK_INCLUDE_DIR "external/include")
+set(VK_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/vulkan-1.lib")
+find_library(Vulkan_LIBRARY "vulkan-1" HINTS "${VK_LIBRARY_DIR}" REQUIRED)
+add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+
 set(STDIO_LIBRARY "legacy_stdio_definitions.lib")
 
 set(CORELIBS
