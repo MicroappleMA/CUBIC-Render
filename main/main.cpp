@@ -6,11 +6,66 @@
  * @copyright Jiayi Chen, University of Pennsylvania
  */
 
-#include "main.hpp"
 
-//-------------------------------
-//-------------MAIN--------------
-//-------------------------------
+#include <cstdlib>
+#include <ctime>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <memory>
+#include <cuda_runtime.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#define TINYGLTF_LOADER_IMPLEMENTATION
+#include "util/tiny_gltf_loader.h"
+#include "util/glslUtility.hpp"
+#include "util/utilityCore.hpp"
+#include "util/json.hpp"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtx/transform.hpp"
+#include "render/render.h"
+#include "rhi.h"
+#include "gl/rhiGL.h"
+
+using namespace std;
+
+int main(int argc, char **argv);
+void callRender();
+void keyCallback(int key, int action);
+void mouseButtonCallback(int button, int action);
+void mouseMotionCallback(double xpos, double ypos);
+void mouseWheelCallback(double xoffset, double yoffset);
+
+/////////Global Variable/////////
+
+unique_ptr<Render> render = nullptr;
+unique_ptr<RHI> rhi = nullptr;
+
+int frame = 0;
+int fpstracker = 0;
+double seconds = time(NULL);
+int fps = 0;
+
+bool vsync;
+int width;
+int height;
+bool inverseRender;
+
+float scale = 1.0f;
+float x_trans = 0.0f, y_trans = 0.0f, z_trans = 5.0f;
+float x_angle = 0.0f, y_angle = (float)PI;
+MaterialType currentMaterial = Invalid;
+
+double lastx = 0;
+double lasty = 0;
+
+enum ControlState { NONE = 0, ROTATE, TRANSLATE };
+ControlState mouseState = NONE;
+
+bool shouldExit = false;
+
+/////////Entry Function/////////
 
 int main(int argc, char **argv) {
 #ifdef DEBUG
@@ -54,61 +109,56 @@ int main(int argc, char **argv) {
         else if(typeString == "point") type = PointLight;
 
         light.push_back({
-            type,
-            {l["position"]["x"],l["position"]["y"],l["position"]["z"]},
-            glm::normalize(glm::vec3{l["direction"]["x"],l["direction"]["y"],l["direction"]["z"]}),
-            {l["color"]["r"],l["color"]["g"],l["color"]["b"]},
-            l["intensity"]
-        });
+                            type,
+                            {l["position"]["x"],l["position"]["y"],l["position"]["z"]},
+                            glm::normalize(glm::vec3{l["direction"]["x"],l["direction"]["y"],l["direction"]["z"]}),
+                            {l["color"]["r"],l["color"]["g"],l["color"]["b"]},
+                            l["intensity"]
+                        });
     }
 
 
     // Load scene from disk
-	tinygltf::Scene scene;
-	tinygltf::TinyGLTFLoader loader;
-	std::string err;
-	std::string ext = getFilePathExtension(modelPath);
+    tinygltf::Scene scene;
+    tinygltf::TinyGLTFLoader loader;
+    std::string err;
+    std::string ext = (modelPath.find_last_of('.') != std::string::npos) ?
+                        modelPath.substr(modelPath.find_last_of('.') + 1):
+                        "";
 
-	bool ret = false;
-	if (ext == "glb") {
-		// assume binary glTF.
-		ret = loader.LoadBinaryFromFile(&scene, &err, modelPath);
-	} else {
-		// assume ascii glTF.
-		ret = loader.LoadASCIIFromFile(&scene, &err, modelPath);
-	}
-
-	if (!err.empty()) {
-        cout<<"Err: "+err;
-	}
-
-	if (!ret) {
-        cout<<"Failed to parse glTF\n";
-        getchar();
-		return -1;
-	}
-
-
-    frame = 0;
-    seconds = time(NULL);
-    fpstracker = 0;
-
-    // Launch CUDA/GL
-    if (init(scene, light)) {
-        // GLFW main loop
-        mainLoop();
+    bool ret = false;
+    if (ext == "glb") {
+        // assume binary glTF.
+        ret = loader.LoadBinaryFromFile(&scene, &err, modelPath);
+    } else {
+        // assume ascii glTF.
+        ret = loader.LoadASCIIFromFile(&scene, &err, modelPath);
     }
 
-    return 0;
-}
+    if (!err.empty()) {
+        cout<<"Err: "+err;
+    }
 
-void mainLoop() {
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-        runCuda();
+    if (!ret) {
+        cout<<"Failed to parse glTF\n";
+        getchar();
+        return -1;
+    }
+
+    render = make_unique<Render>();
+    rhi = make_unique<RHIGL>();
+
+    rhi->init();
+    rhi->initSurface(inverseRender?3 * width:width, height, vsync);
+    rhi->initPipeline();
+    rhi->setCallback(mouseMotionCallback,mouseWheelCallback,mouseButtonCallback,keyCallback);
+
+    render->init(scene, light, width, height);
+
+    while (!shouldExit) {
+        callRender();
 
         time_t seconds2 = time (NULL);
-
         if (seconds2 - seconds >= 1) {
 
             fps = fpstracker / (seconds2 - seconds);
@@ -117,35 +167,19 @@ void mainLoop() {
         }
 
         string title = "CUBIC Render | " + to_string((int)fps) + " FPS";
-        glfwSetWindowTitle(window, title.c_str());
-
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-        glBindTexture(GL_TEXTURE_2D, displayImage);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, inverseRender?3 * width:width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // VAO, shader program, and texture already bound
-        glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_SHORT, 0);
-        if(vsync)
-            glfwSwapBuffers(window);
-        else
-            glFlush();
+        rhi->draw(title.c_str());
     }
-    glfwDestroyWindow(window);
-    glfwTerminate();
+
+    rhi->destroy();
+    render->free();
+
+    return 0;
 }
 
-//-------------------------------
-//---------RUNTIME STUFF---------
-//-------------------------------
-float scale = 1.0f;
-float x_trans = 0.0f, y_trans = 0.0f, z_trans = 5.0f;
-float x_angle = 0.0f, y_angle = (float)PI;
-MaterialType currentMaterial = Invalid;
-void runCuda() {
-    // Map OpenGL buffer object for writing from CUDA on a single GPU
-    // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
-    // dptr = NULL;
+
+/////////Render Function/////////
+
+void callRender() {
 
     glm::mat4 P = glm::frustum<float>(-scale * ((float)width) / ((float)height),
                                       scale * ((float)width / (float)height),
@@ -162,234 +196,45 @@ void runCuda() {
     glm::mat4 MV = V * M;
     glm::mat4 MVP = P * MV;
 
-    // cudaGLMapBufferObject((void **)&dptr, pbo);
+    render->overrideMaterial = currentMaterial;
 
-    Render::getInstance().overrideMaterial = currentMaterial;
+    uchar4* buf = reinterpret_cast<uchar4*>(rhi->mapBuffer());
 
     if (inverseRender)
     {
-        Render::getInstance().setPboConfig(2 * width, 0);
-        Render::getInstance().render(M, V, P);
+        render->render(M, V, P, 2 * width, 0, 3 * width, height, buf);
         cudaDeviceSynchronize();
 
-        Render::getInstance().setPboConfig(width, 0);
-        Render::getInstance().inverseRender();
+        render->inverseRender(width, 0, 3 * width, height, buf);
         cudaDeviceSynchronize();
 
-        Render::getInstance().setPboConfig(0, 0);
-        Render::getInstance().renderTex(6); // Render Baked Texture
+        render->renderTex(6, 0, 0, 3 * width, height, buf); // Render Baked Texture
         cudaDeviceSynchronize();
     }
     else
     {
-        Render::getInstance().render(M, V, P);
+        render->render(M, V, P, 0, 0, width, height, buf);
         cudaDeviceSynchronize();
     }
 
-
-    // cudaGLUnmapBufferObject(pbo);
+    rhi->unmapBuffer();
 
     frame++;
     fpstracker++;
 }
 
-//-------------------------------
-//----------SETUP STUFF----------
-//-------------------------------
-
-bool init(const tinygltf::Scene & scene, const vector<Light> & light) {
-    glfwSetErrorCallback(errorCallback);
-
-    if (!glfwInit()) {
-        return false;
-    }
-
-    glfwWindowHint(GLFW_DOUBLEBUFFER, vsync);
-    window = glfwCreateWindow(inverseRender?3 * width:width, height, "", NULL, NULL);
-    if (!window) {
-        glfwTerminate();
-        return false;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetKeyCallback(window, keyCallback);
-
-    // Set up GL context
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        return false;
-    }
-
-    // Initialize other stuff
-    initVAO();
-    initTextures();
-    initCuda();
-    initPBO();
-
-    // Mouse Control Callbacks
-    glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    glfwSetCursorPosCallback(window, mouseMotionCallback);
-    glfwSetScrollCallback(window, mouseWheelCallback);
-
-    {
-        auto it(scene.scenes.begin());
-        auto itEnd(scene.scenes.end());
-
-        for (; it != itEnd; it++) {
-            for (size_t i = 0; i < it->second.size(); i++) {
-                std::cout << it->second[i]
-                          << ((i != (it->second.size() - 1)) ? ", " : "");
-            }
-            std::cout << " ] \n";
-        }
-    }
-
-
-    Render::getInstance().init(scene, light, width, height, 0, 0, inverseRender?3 * width:width, height, dptr);
-
-    GLuint passthroughProgram;
-    passthroughProgram = initShader();
-
-    glUseProgram(passthroughProgram);
-    glActiveTexture(GL_TEXTURE0);
-
-    return true;
-}
-
-void initPBO() {
-    // set up vertex data parameter
-    int num_texels = (inverseRender?3:1) * width * height;
-    int num_values = num_texels * 4;
-    int size_tex_data = sizeof(GLubyte) * num_values;
-
-    // Generate a buffer ID called a PBO (Pixel Buffer Object)
-    glGenBuffers(1, &pbo);
-
-    // Make this the current UNPACK buffer (OpenGL is state-based)
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-
-    // Allocate data for the buffer. 4-channel 8-bit image
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
-    cudaGLRegisterBufferObject(pbo);
-    cudaGLMapBufferObject((void **)&dptr, pbo);
-}
-
-void initCuda() {
-    // Use device with highest Gflops/s
-    cudaGLSetGLDevice(0);
-
-    // Clean up on program exit
-    atexit(cleanupCuda);
-}
-
-void initTextures() {
-    glGenTextures(1, &displayImage);
-    glBindTexture(GL_TEXTURE_2D, displayImage);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, inverseRender?3 * width:width, height, 0, GL_BGRA,
-                  GL_UNSIGNED_BYTE, NULL);
-}
-
-void initVAO(void) {
-    GLfloat vertices[] = {
-            -1.0f, -1.0f,
-            1.0f, -1.0f,
-            1.0f,  1.0f,
-            -1.0f,  1.0f,
-    };
-
-    GLfloat texcoords[] = {
-            1.0f, 1.0f,
-            0.0f, 1.0f,
-            0.0f, 0.0f,
-            1.0f, 0.0f
-    };
-
-    GLushort indices[] = { 0, 1, 3, 3, 1, 2 };
-
-    GLuint vertexBufferObjID[3];
-    glGenBuffers(3, vertexBufferObjID);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObjID[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer((GLuint)positionLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(positionLocation);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObjID[1]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(texcoords), texcoords, GL_STATIC_DRAW);
-    glVertexAttribPointer((GLuint)texcoordsLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(texcoordsLocation);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexBufferObjID[2]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-}
-
-
-GLuint initShader() {
-    GLuint program = glslUtility::createDefaultProgram(attributeLocations, 2);
-    GLint location;
-
-    glUseProgram(program);
-    if ((location = glGetUniformLocation(program, "u_image")) != -1) {
-        glUniform1i(location, 0);
-    }
-
-    return program;
-}
-
-//-------------------------------
-//---------CLEANUP STUFF---------
-//-------------------------------
-
-void cleanupCuda() {
-    if (pbo) {
-        deletePBO(&pbo);
-    }
-    if (displayImage) {
-        deleteTexture(&displayImage);
-    }
-}
-
-void deletePBO(GLuint *pbo) {
-    if (pbo) {
-        // unregister this buffer object with CUDA
-        cudaGLUnregisterBufferObject(*pbo);
-
-        glBindBuffer(GL_ARRAY_BUFFER, *pbo);
-        glDeleteBuffers(1, pbo);
-
-        *pbo = (GLuint)NULL;
-    }
-}
-
-void deleteTexture(GLuint *tex) {
-    glDeleteTextures(1, tex);
-    *tex = (GLuint)NULL;
-}
-
-void shut_down(int return_code) {
-    Render::getInstance().free();
-    cudaDeviceReset();
-    exit(return_code);
-}
-
-//------------------------------
-//-------GLFW CALLBACKS---------
-//------------------------------
-
-void errorCallback(int error, const char *description) {
-    fputs(description, stderr);
-}
+/////////Callback Function/////////
 
 // Index must in range[0,9]
 #define BIND_MATERIAL_KEY(index) \
 {if (key == GLFW_KEY_0 + (index)) {currentMaterial = (MaterialType)(index); }}
 
-void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+void keyCallback(int key, int action)
+{
     if (action == GLFW_PRESS)
     {
         if (key == GLFW_KEY_ESCAPE) {
-            glfwSetWindowShouldClose(window, GL_TRUE);
+            shouldExit = true;
         }
         BIND_MATERIAL_KEY(0);
         BIND_MATERIAL_KEY(1);
@@ -403,24 +248,8 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     }
 }
 
-//----------------------------
-//----- util -----------------
-//----------------------------
-static std::string getFilePathExtension(const std::string &FileName) {
-    if (FileName.find_last_of('.') != std::string::npos)
-        return FileName.substr(FileName.find_last_of('.') + 1);
-    return "";
-}
 
-
-
-//-----------------------------
-//---- Mouse control ----------
-//-----------------------------
-
-enum ControlState { NONE = 0, ROTATE, TRANSLATE };
-ControlState mouseState = NONE;
-void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+void mouseButtonCallback(int button, int action)
 {
     if (action == GLFW_PRESS)
     {
@@ -440,9 +269,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-double lastx = 0;
-double lasty = 0;
-void mouseMotionCallback(GLFWwindow* window, double xpos, double ypos)
+void mouseMotionCallback(double xpos, double ypos)
 {
     const double s_r = 0.01;
     const double s_t = 0.01;
@@ -466,7 +293,7 @@ void mouseMotionCallback(GLFWwindow* window, double xpos, double ypos)
     }
 }
 
-void mouseWheelCallback(GLFWwindow* window, double xoffset, double yoffset)
+void mouseWheelCallback(double xoffset, double yoffset)
 {
     const double sensitivity = 0.3;
     z_trans -= (float)(sensitivity * yoffset);

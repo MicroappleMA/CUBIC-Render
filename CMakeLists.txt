@@ -65,29 +65,18 @@ set(CUDA_VERBOSE_BUILD ON)
 set(CUDA_PROPAGATE_HOST_FLAGS ON)
 
 set(UTIL_FILES
-    "util/utilityCore.hpp"
     "util/utilityCore.cpp"
-    "util/glslUtility.hpp"
-    "util/glslUtility.cpp"
-    "util/tiny_gltf_loader.h")
+    "util/glslUtility.cpp")
 
 set(RENDER_FILES
     "render/render.cu"
-    "render/render.h"
-    "render/renderFunc.cu"
-    "render/renderFunc.h"
-    "render/renderTool.h"
-    "render/shader.h"
-    "render/dataType.h")
+    "render/renderFunc.cu")
 
 set(RHI_FILES
-    "gl/rhiGL.cpp"
-    "gl/rhiGL.h")
+    "gl/rhiGL.cpp")
 
 set(MAIN_FILES
-    "main/main.hpp"
-    "main/main.cpp"
-    "main/rhi.h")
+    "main/main.cpp")
 
 add_executable(${CMAKE_PROJECT_NAME} ${UTIL_FILES} ${RENDER_FILES} ${RHI_FILES} ${MAIN_FILES})
 

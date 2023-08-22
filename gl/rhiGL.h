@@ -4,7 +4,7 @@
 #include "gl/glew.h"
 #include "glfw/glfw3.h"
 
-class rhiGL: public rhi {
+class RHIGL: public RHI {
 public:
     void init() override;
     void initSurface(int width, int height, bool vsync) override;

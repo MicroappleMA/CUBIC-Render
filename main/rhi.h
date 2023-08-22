@@ -5,7 +5,7 @@ typedef void (*PFN_scrollCallback)(double, double);
 typedef void (*PFN_mouseButtonCallback)(int, int);
 typedef void (*PFN_keyCallback)(int, int);
 
-class rhi {
+class RHI {
 public:
     virtual void init()=0;
     virtual void initSurface(int width, int height, bool vsync)=0;
@@ -18,5 +18,4 @@ public:
     virtual void unmapBuffer()=0;
     virtual void draw(const char* title)=0;
     virtual void destroy()=0;
-
 };

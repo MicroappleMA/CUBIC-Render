@@ -9,40 +9,40 @@
 
 using namespace std;
 
-PFN_keyCallback rhiGL::keyCallback = nullptr;
-PFN_mouseButtonCallback rhiGL::mouseButtonCallback = nullptr;
-PFN_scrollCallback rhiGL::scrollCallback = nullptr;
-PFN_cursorPosCallback rhiGL::cursorPosCallback = nullptr;
+PFN_keyCallback RHIGL::keyCallback = nullptr;
+PFN_mouseButtonCallback RHIGL::mouseButtonCallback = nullptr;
+PFN_scrollCallback RHIGL::scrollCallback = nullptr;
+PFN_cursorPosCallback RHIGL::cursorPosCallback = nullptr;
 
-void rhiGL::glfwErrorCallback(int error, const char *description) {
+void RHIGL::glfwErrorCallback(int error, const char *description) {
     fputs(description, stderr);
 }
 
-void rhiGL::glfwKeyCallback(GLFWwindow* window,int key, int scancode, int action, int mods)
+void RHIGL::glfwKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if(rhiGL::keyCallback)
-        rhiGL::keyCallback(key,action);
+    if(RHIGL::keyCallback)
+        RHIGL::keyCallback(key, action);
 }
 
-void rhiGL::glfwMouseButtonCallback(GLFWwindow* window,int button, int action, int mods)
+void RHIGL::glfwMouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
-    if(rhiGL::mouseButtonCallback)
-        rhiGL::mouseButtonCallback(button, action);
+    if(RHIGL::mouseButtonCallback)
+        RHIGL::mouseButtonCallback(button, action);
 }
 
-void rhiGL::glfwScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+void RHIGL::glfwScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    if(rhiGL::scrollCallback)
-        rhiGL::scrollCallback(xoffset, yoffset);
+    if(RHIGL::scrollCallback)
+        RHIGL::scrollCallback(xoffset, yoffset);
 }
 
-void rhiGL::glfwCursorPosCallback(GLFWwindow* window, double xpos, double ypos)
+void RHIGL::glfwCursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 {
-    if(rhiGL::cursorPosCallback)
-        rhiGL::cursorPosCallback(xpos,ypos);
+    if(RHIGL::cursorPosCallback)
+        RHIGL::cursorPosCallback(xpos, ypos);
 }
 
-void rhiGL::initVAO() {
+void RHIGL::initVAO() {
     GLfloat vertices[] = {
             -1.0f, -1.0f,
             1.0f, -1.0f,
@@ -77,7 +77,7 @@ void rhiGL::initVAO() {
 }
 
 
-GLuint rhiGL::initShader() {
+GLuint RHIGL::initShader() {
     GLuint program = glslUtility::createDefaultProgram(attributeLocations, 2);
     GLint location;
 
@@ -89,7 +89,7 @@ GLuint rhiGL::initShader() {
     return program;
 }
 
-void rhiGL::initTextures() {
+void RHIGL::initTextures() {
     glGenTextures(1, &displayImage);
     glBindTexture(GL_TEXTURE_2D, displayImage);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -98,7 +98,7 @@ void rhiGL::initTextures() {
                   GL_UNSIGNED_BYTE, NULL);
 }
 
-void rhiGL::initPBO() {
+void RHIGL::initPBO() {
     // set up vertex data parameter
     int num_texels = width * height;
     int num_values = num_texels * 4;
@@ -115,7 +115,7 @@ void rhiGL::initPBO() {
     cudaGLRegisterBufferObject(pbo);
 }
 
-void rhiGL::destroyPBO() {
+void RHIGL::destroyPBO() {
     if (pbo) {
         // unregister this buffer object with CUDA
         cudaGLUnregisterBufferObject(pbo);
@@ -127,7 +127,7 @@ void rhiGL::destroyPBO() {
     }
 }
 
-void rhiGL::destroyTexture() {
+void RHIGL::destroyTexture() {
     if(displayImage)
     {
         glDeleteTextures(1, &displayImage);
@@ -135,13 +135,13 @@ void rhiGL::destroyTexture() {
     }
 }
 
-void rhiGL::init()
+void RHIGL::init()
 {
     glfwSetErrorCallback(glfwErrorCallback);
     assert(glfwInit());
 }
 
-void rhiGL::initSurface(int width, int height, bool vsync)
+void RHIGL::initSurface(int width, int height, bool vsync)
 {
     this->width = width;
     this->height = height;
@@ -155,7 +155,7 @@ void rhiGL::initSurface(int width, int height, bool vsync)
     assert(glewInit() == GLEW_OK);
 }
 
-void rhiGL::initPipeline()
+void RHIGL::initPipeline()
 {
     initVAO();
     initTextures();
@@ -168,33 +168,33 @@ void rhiGL::initPipeline()
     glActiveTexture(GL_TEXTURE0);
 }
 
-void rhiGL::setCallback(PFN_cursorPosCallback newCursorPosCallback, PFN_scrollCallback newScrollCallback,
+void RHIGL::setCallback(PFN_cursorPosCallback newCursorPosCallback, PFN_scrollCallback newScrollCallback,
                         PFN_mouseButtonCallback newMouseButtonCallback, PFN_keyCallback newKeyCallback)
 {
-    rhiGL::keyCallback = newKeyCallback;
-    rhiGL::mouseButtonCallback = newMouseButtonCallback;
-    rhiGL::scrollCallback = newScrollCallback;
-    rhiGL::cursorPosCallback = newCursorPosCallback;
+    RHIGL::keyCallback = newKeyCallback;
+    RHIGL::mouseButtonCallback = newMouseButtonCallback;
+    RHIGL::scrollCallback = newScrollCallback;
+    RHIGL::cursorPosCallback = newCursorPosCallback;
 
-    glfwSetKeyCallback(window, rhiGL::glfwKeyCallback);
-    glfwSetMouseButtonCallback(window, rhiGL::glfwMouseButtonCallback);
-    glfwSetScrollCallback(window, rhiGL::glfwScrollCallback);
-    glfwSetCursorPosCallback(window, rhiGL::glfwCursorPosCallback);
+    glfwSetKeyCallback(window, RHIGL::glfwKeyCallback);
+    glfwSetMouseButtonCallback(window, RHIGL::glfwMouseButtonCallback);
+    glfwSetScrollCallback(window, RHIGL::glfwScrollCallback);
+    glfwSetCursorPosCallback(window, RHIGL::glfwCursorPosCallback);
 }
 
-void *rhiGL::mapBuffer()
+void *RHIGL::mapBuffer()
 {
     void* dptr;
     cudaGLMapBufferObject((void **)&dptr, pbo);
     return dptr;
 }
 
-void rhiGL::unmapBuffer()
+void RHIGL::unmapBuffer()
 {
     cudaGLUnmapBufferObject(pbo);
 }
 
-void rhiGL::draw(const char* title) {
+void RHIGL::draw(const char* title) {
     glfwPollEvents();
     glfwSetWindowTitle(window, title);
 
@@ -211,7 +211,7 @@ void rhiGL::draw(const char* title) {
         glFlush();
 }
 
-void rhiGL::destroy()
+void RHIGL::destroy()
 {
     destroyPBO();
     destroyTexture();
