@@ -80,11 +80,16 @@ set(RENDER_FILES
     "render/shader.h"
     "render/dataType.h")
 
+set(RHI_FILES
+    "gl/rhiGL.cpp"
+    "gl/rhiGL.h")
+
 set(MAIN_FILES
     "main/main.hpp"
-    "main/main.cpp")
+    "main/main.cpp"
+    "main/rhi.h")
 
-add_executable(${CMAKE_PROJECT_NAME} ${UTIL_FILES} ${RENDER_FILES} ${MAIN_FILES})
+add_executable(${CMAKE_PROJECT_NAME} ${UTIL_FILES} ${RENDER_FILES} ${RHI_FILES} ${MAIN_FILES})
 
 # CUDA linker options
 find_package(Threads REQUIRED)
