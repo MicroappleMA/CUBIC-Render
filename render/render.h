@@ -15,43 +15,21 @@
 
 class Render {
 public:
-    static Render& getInstance(){
-        static Render instance;
-        return instance;
-    }
-
-    void init(const tinygltf::Scene & scene, const std::vector<Light> &light,
-              const int &w, const int &h, const int &beginW, const int &beginH,
-              const int &bufferW, const int &bufferH, uchar4* const pbo);
-    void render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P);
-    void inverseRender();
+    void init(const tinygltf::Scene & scene, const std::vector<Light> &light, const int &w, const int &h);
+    void render(const glm::mat4 & M, const glm::mat4 & V, const glm::mat4 & P,
+                const int &beginW, const int &beginH, const int &bufferW, const int &bufferH, uchar4* const pbo);
+    void inverseRender(const int &beginW, const int &beginH, const int &bufferW, const int &bufferH, uchar4* const pbo);
+    void renderTex(int texIndex, const int &beginW, const int &beginH, const int &bufferW, const int &bufferH, uchar4* const pbo);
     void free();
-    void setPboConfig(const int &beginW = -1, const int &beginH = -1,
-                      const int &bufferW = -1, const int &bufferH = -1,
-                      uchar4* const pbo = nullptr);
-    void renderTex(int texIndex);
 
     MaterialType overrideMaterial = Invalid;
 
 private:
-    Render () = default;
-    ~Render () = default;
-    Render (const Render &) = delete;
-    Render & operator=(const Render &) = delete;
-
     int width = 0;
     int height = 0;
 
     dim3 blockSize2d = {0,0,0};
     dim3 blockCount2d = {0,0,0};
-
-    int bufferBeginWidth = 0;
-    int bufferBeginHeight = 0;
-
-    int bufferWidth = 0;
-    int bufferHeight = 0;
-
-    uchar4 *buffer = nullptr;
 
     SceneInfo sceneInfo;
 

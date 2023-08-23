@@ -14,8 +14,8 @@
 #include <cuda_runtime.h>
 #include <thrust/random.h>
 #include "util/checkCUDAError.h"
-#include "external/include/glm/gtc/quaternion.hpp"
-#include "external/include/glm/gtx/transform.hpp"
+#include "glm/gtc/quaternion.hpp"
+#include "glm/gtx/transform.hpp"
 
 #include "dataType.h"
 #include "renderTool.h"
@@ -27,7 +27,8 @@
 ///                      Render Pipeline                     ///
 ////////////////////////////////////////////////////////////////
 
-void Render::render(const glm::mat4 & Model, const glm::mat4 & View, const glm::mat4 & Projection) {
+void Render::render(const glm::mat4 & Model, const glm::mat4 & View, const glm::mat4 & Projection,
+                    const int &beginW, const int &beginH, const int &bufferW, const int &bufferH, uchar4* const pbo) {
     // Execute your rasterization pipeline here
     // (See README for rasterization pipeline outline.)
 
@@ -105,13 +106,12 @@ void Render::render(const glm::mat4 & Model, const glm::mat4 & View, const glm::
     checkCUDAError("Fragment Shader");
 
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
-    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, dev_framebuffer, width, height,
-                                                   bufferBeginWidth, bufferBeginHeight,
-                                                   bufferWidth, bufferHeight);
+    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, dev_framebuffer, width, height,
+                                                   beginW, beginH,bufferW, bufferH);
     checkCUDAError("Copy Render Result To Pbo");
 }
 
-void Render::inverseRender()
+void Render::inverseRender(const int &beginW, const int &beginH, const int &bufferW, const int &bufferH, uchar4* const pbo)
 {
     _inverseFragmentShading<<<blockCount2d, blockSize2d>>>(dev_framebuffer,
                                                            dev_fragmentBuffer,
@@ -163,19 +163,17 @@ void Render::inverseRender()
         checkCUDAError("Inverse Vertex Processing and Primitive Assembly");
     }
 
-    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(buffer, dev_framebuffer, width, height,
-                                                   bufferBeginWidth, bufferBeginHeight,
-                                                   bufferWidth, bufferHeight);
+    _copyImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, dev_framebuffer, width, height,
+                                                   beginW, beginH,bufferW, bufferH);
     checkCUDAError("Inverse Copy Image To PBO");
 }
 
-void Render::renderTex(int texIndex)
+void Render::renderTex(int texIndex, const int &beginW, const int &beginH, const int &bufferW, const int &bufferH, uchar4* const pbo)
 {
     // Assume show the first texture of the first primitive of the first mesh
     const Tex &tex = sceneInfo.mesh2PrimitivesMap.begin()->second.begin()->dev_tex[texIndex];
-    _copyTexToPBO<<<blockCount2d, blockSize2d>>>(buffer, tex, width, height,
-                                                 bufferBeginWidth, bufferBeginHeight,
-                                                 bufferWidth, bufferHeight);
+    _copyTexToPBO<<<blockCount2d, blockSize2d>>>(pbo, tex, width, height,
+                                                 beginW, beginH,bufferW, bufferH);
 }
 
 
@@ -232,32 +230,12 @@ void Render::free() {
     checkCUDAError("render Free");
 }
 
-void Render::setPboConfig(const int &beginW, const int &beginH,
-                          const int &bufferW, const int &bufferH,
-                          uchar4* const pbo)
-{
-    if (beginW >= 0)
-        bufferBeginWidth = beginW;
-    if (beginH >= 0)
-        bufferBeginHeight = beginH;
-    if (bufferW >= 0)
-        bufferWidth = bufferW;
-    if (bufferH >= 0)
-        bufferHeight = bufferH;
-    if (pbo)
-        buffer = pbo;
-}
-
-void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light,
-                  const int &w, const int &h, const int &beginW, const int &beginH,
-                  const int &bufferW, const int &bufferH, uchar4* const pbo) {
+void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light, const int &w, const int &h) {
 
     // 0. Init some buffers that are not related to the scene
     {
         width = w;
         height = h;
-
-        setPboConfig(beginW, beginH, bufferW, bufferH, pbo);
 
         blockSize2d = {tileSize, tileSize, 1};
         blockCount2d ={(width - 1) / tileSize + 1,(height - 1) / tileSize + 1, 1};

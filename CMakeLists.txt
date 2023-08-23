@@ -32,6 +32,12 @@ find_library(GLEW_LIBRARY "glew32s" HINTS "${GLEW_LIBRARY_DIR}" REQUIRED)
 # OpenGL
 find_package(OpenGL REQUIRED)
 
+# Vulkan
+set(VK_INCLUDE_DIR "external/include")
+set(VK_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/vulkan-1.lib")
+find_library(Vulkan_LIBRARY "vulkan-1" HINTS "${VK_LIBRARY_DIR}" REQUIRED)
+add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+
 set(STDIO_LIBRARY "legacy_stdio_definitions.lib")
 
 set(CORELIBS
@@ -59,26 +65,20 @@ set(CUDA_VERBOSE_BUILD ON)
 set(CUDA_PROPAGATE_HOST_FLAGS ON)
 
 set(UTIL_FILES
-    "util/utilityCore.hpp"
     "util/utilityCore.cpp"
-    "util/glslUtility.hpp"
-    "util/glslUtility.cpp"
-    "util/tiny_gltf_loader.h")
+    "util/glslUtility.cpp")
 
 set(RENDER_FILES
     "render/render.cu"
-    "render/render.h"
-    "render/renderFunc.cu"
-    "render/renderFunc.h"
-    "render/renderTool.h"
-    "render/shader.h"
-    "render/dataType.h")
+    "render/renderFunc.cu")
+
+set(RHI_FILES
+    "gl/rhiGL.cpp")
 
 set(MAIN_FILES
-    "main/main.hpp"
     "main/main.cpp")
 
-add_executable(${CMAKE_PROJECT_NAME} ${UTIL_FILES} ${RENDER_FILES} ${MAIN_FILES})
+add_executable(${CMAKE_PROJECT_NAME} ${UTIL_FILES} ${RENDER_FILES} ${RHI_FILES} ${MAIN_FILES})
 
 # CUDA linker options
 find_package(Threads REQUIRED)

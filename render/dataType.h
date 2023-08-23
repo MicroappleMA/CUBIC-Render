@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "external/include/glm/glm.hpp"
+#include "glm/glm.hpp"
 
 static const unsigned int tileSize = 4;
 static const unsigned int maxPrimitivesPerTile = 1024;
