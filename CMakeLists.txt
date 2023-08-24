@@ -35,7 +35,7 @@ find_package(OpenGL REQUIRED)
 # Vulkan
 set(VK_INCLUDE_DIR "external/include")
 set(VK_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/vulkan-1.lib")
-find_library(Vulkan_LIBRARY "vulkan-1" HINTS "${VK_LIBRARY_DIR}" REQUIRED)
+find_library(VK_LIBRARY "vulkan-1" HINTS "${VK_LIBRARY_DIR}" REQUIRED)
 add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
 
 set(STDIO_LIBRARY "legacy_stdio_definitions.lib")
@@ -44,6 +44,7 @@ set(CORELIBS
     "${GLFW_LIBRARY}"
     "${OPENGL_LIBRARY}"
     "${GLEW_LIBRARY}"
+    "${VK_LIBRARY}"
     "${STDIO_LIBRARY}"
     )
 
@@ -73,7 +74,8 @@ set(RENDER_FILES
     "render/renderFunc.cu")
 
 set(RHI_FILES
-    "gl/rhiGL.cpp")
+    "gl/rhiGL.cpp"
+    "vulkan/rhiVK.cpp")
 
 set(MAIN_FILES
     "main/main.cpp")

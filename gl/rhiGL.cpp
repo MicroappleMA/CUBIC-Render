@@ -147,7 +147,8 @@ void RHIGL::initSurface(int width, int height, bool vsync)
     this->height = height;
     this->vsync = vsync;
     glfwWindowHint(GLFW_DOUBLEBUFFER, vsync);
-    window = glfwCreateWindow(width, height, "", NULL, NULL);
+    glfwWindowHint(GLFW_RESIZABLE, false);
+    window = glfwCreateWindow(width, height, "", nullptr, nullptr);
     assert(window);
     glfwMakeContextCurrent(window);
 
