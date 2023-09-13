@@ -17,5 +17,38 @@ public:
     void unmapBuffer() override;
     void draw(const char* title) override;
     void destroy() override;
+
+private:
+    void createInstance();
+    void enableValidationLayer(VkInstanceCreateInfo &createInfo);
+
+    void setPhysicalDevice();
+    bool checkDeviceSuitability(const VkPhysicalDevice &device);
+
+    void createLogicalDevice();
+
+    const char* VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
+    const uint32_t NVIDIA_VENDOR_ID = 0x10de;
+    const float HIGHEST_QUEUE_PRIORITY = 1.0f;
+
+    int width, height;
+    bool vsync;
+    GLFWwindow *window;
+    VkInstance instance;
+    VkPhysicalDevice physicalDevice;
+    struct QueueFamily{
+        bool hasGraphics;
+        uint32_t graphics;
+        // bool hasCompute;
+        // uint32_t compute;
+        // bool hasTransfer;
+        // uint32_t transfer;
+    }queueFamily;
+    VkDevice device;
+    struct Queue{
+        VkQueue graphics;
+        // VkQueue compute;
+        // VkQueue transfer;
+    }queue;
 };
 
