@@ -27,6 +27,7 @@
 #include "render/render.h"
 #include "rhi.h"
 #include "gl/rhiGL.h"
+#include "vulkan/rhiVK.h"
 
 using namespace std;
 
@@ -148,8 +149,7 @@ int main(int argc, char **argv) {
     render = make_unique<Render>();
     rhi = make_unique<RHIGL>();
 
-    rhi->init();
-    rhi->initSurface(inverseRender?3 * width:width, height, vsync);
+    rhi->init(inverseRender?3 * width:width, height, vsync);
     rhi->initPipeline();
     rhi->setCallback(mouseMotionCallback,mouseWheelCallback,mouseButtonCallback,keyCallback);
 
@@ -160,7 +160,6 @@ int main(int argc, char **argv) {
 
         time_t seconds2 = time (NULL);
         if (seconds2 - seconds >= 1) {
-
             fps = fpstracker / (seconds2 - seconds);
             fpstracker = 0;
             seconds = seconds2;

@@ -7,8 +7,7 @@ typedef void (*PFN_keyCallback)(int, int);
 
 class RHI {
 public:
-    virtual void init()=0;
-    virtual void initSurface(int width, int height, bool vsync)=0;
+    virtual void init(int width, int height, bool vsync)=0;
     virtual void initPipeline()=0;
     virtual void setCallback(PFN_cursorPosCallback cursorPosCallback,
                              PFN_scrollCallback scrollCallback,

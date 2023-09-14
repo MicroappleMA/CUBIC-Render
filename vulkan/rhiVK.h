@@ -4,10 +4,11 @@
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
 
+#include <vector>
+
 class RHIVK: public RHI {
 public:
-    void init() override;
-    void initSurface(int width, int height, bool vsync) override;
+    void init(int width, int height, bool vsync) override;
     void initPipeline() override;
     void setCallback(PFN_cursorPosCallback cursorPosCallback,
                      PFN_scrollCallback scrollCallback,
@@ -22,12 +23,17 @@ private:
     void createInstance();
     void enableValidationLayer(VkInstanceCreateInfo &createInfo);
 
+    void initSurface();
+
     void setPhysicalDevice();
     bool checkDeviceSuitability(const VkPhysicalDevice &device);
 
     void createLogicalDevice();
 
+    void createSwapChain();
+
     const char* VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
+    const char* SWAPCHAIN_EXTENSION_NAME = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
     const uint32_t NVIDIA_VENDOR_ID = 0x10de;
     const float HIGHEST_QUEUE_PRIORITY = 1.0f;
 
@@ -50,5 +56,10 @@ private:
         // VkQueue compute;
         // VkQueue transfer;
     }queue;
+    VkSurfaceKHR surface;
+    VkSwapchainKHR swapChain;
+    std::vector<VkImage> swapChainImages;
+    VkSurfaceFormatKHR swapChainFormat;
+    VkExtent2D swapChainExtent;
 };
 

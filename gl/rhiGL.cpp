@@ -135,17 +135,15 @@ void RHIGL::destroyTexture() {
     }
 }
 
-void RHIGL::init()
-{
-    glfwSetErrorCallback(glfwErrorCallback);
-    assert(glfwInit());
-}
-
-void RHIGL::initSurface(int width, int height, bool vsync)
+void RHIGL::init(int width, int height, bool vsync)
 {
     this->width = width;
     this->height = height;
     this->vsync = vsync;
+
+    glfwSetErrorCallback(glfwErrorCallback);
+    assert(glfwInit());
+
     glfwWindowHint(GLFW_DOUBLEBUFFER, vsync);
     glfwWindowHint(GLFW_RESIZABLE, false);
     window = glfwCreateWindow(width, height, "", nullptr, nullptr);
