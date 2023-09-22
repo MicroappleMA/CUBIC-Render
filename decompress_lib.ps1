@@ -18,9 +18,6 @@ foreach ($zipfile in $filesToDecompress) {
     # Decompress the .lib.zip file
     Expand-Archive -Path $zipfile.FullName -DestinationPath (Split-Path $destinationPath -Parent) -Force
 
-    # Delete the original .lib.zip file
-    Remove-Item $zipfile.FullName -Force
-
     Write-Output "Decompressed Lib: $destinationPath"
 }
 
