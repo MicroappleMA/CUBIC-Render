@@ -32,6 +32,8 @@ private:
 
     void createSwapChain();
 
+    VkShaderModule createShaderModule(const VkShaderStageFlagBits shaderStage, const char* shaderCode);
+
     const char* VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
     const char* SWAPCHAIN_EXTENSION_NAME = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
     const uint32_t NVIDIA_VENDOR_ID = 0x10de;
@@ -59,6 +61,7 @@ private:
     VkSurfaceKHR surface;
     VkSwapchainKHR swapChain;
     std::vector<VkImage> swapChainImages;
+    std::vector<VkImageView> swapChainImageViews;
     VkSurfaceFormatKHR swapChainFormat;
     VkExtent2D swapChainExtent;
 };

@@ -142,7 +142,8 @@ void RHIGL::init(int width, int height, bool vsync)
     this->vsync = vsync;
 
     glfwSetErrorCallback(glfwErrorCallback);
-    assert(glfwInit());
+    int glfwInitRes = glfwInit();
+    assert(glfwInitRes == GLFW_TRUE);
 
     glfwWindowHint(GLFW_DOUBLEBUFFER, vsync);
     glfwWindowHint(GLFW_RESIZABLE, false);
@@ -151,7 +152,8 @@ void RHIGL::init(int width, int height, bool vsync)
     glfwMakeContextCurrent(window);
 
     glewExperimental = GL_TRUE;
-    assert(glewInit() == GLEW_OK);
+    GLenum glewInitRes = glewInit();
+    assert(glewInitRes == GLEW_OK);
 }
 
 void RHIGL::initPipeline()

@@ -19,38 +19,49 @@ list(APPEND CMAKE_LIBRARY_PATH "${EXTERNAL_LIB_PATH}")
 # Find up and set up core dependency libs
 
 # GLFW
-set(GLFW_INCLUDE_DIR "external/include")
-set(GLFW_LIBRARY_DIR "${EXTERNAL_LIB_PATH}")
+set(GLFW_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/glfw")
 find_library(GLFW_LIBRARY "glfw3" HINTS "${GLFW_LIBRARY_DIR}" REQUIRED)
+list(APPEND CORELIBS ${GLFW_LIBRARY})
 
 # GLEW
-set(GLEW_INCLUDE_DIR "external/include")
-set(GLEW_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/glew32s.lib")
+set(GLEW_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/glew")
 add_definitions(-DGLEW_STATIC)
 find_library(GLEW_LIBRARY "glew32s" HINTS "${GLEW_LIBRARY_DIR}" REQUIRED)
+list(APPEND CORELIBS ${GLEW_LIBRARY})
 
 # OpenGL
 find_package(OpenGL REQUIRED)
+list(APPEND CORELIBS ${OPENGL_LIBRARY})
 
 # Vulkan
-set(VK_INCLUDE_DIR "external/include")
-set(VK_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/vulkan-1.lib")
-find_library(VK_LIBRARY "vulkan-1" HINTS "${VK_LIBRARY_DIR}" REQUIRED)
+set(VK_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/vulkan")
 add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+find_library(VK_LIBRARY "vulkan-1" HINTS "${VK_LIBRARY_DIR}" REQUIRED)
+list(APPEND CORELIBS ${VK_LIBRARY})
+
+# glslang
+set(GLSLANG_LIBRARY_DIR "${EXTERNAL_LIB_PATH}/glslang")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(GLSLANG_SUB_LIB_NAMES
+        "GenericCodeGend" "glslang-default-resource-limitsd" "glslangd" "HLSLd" "MachineIndependentd"
+        "OGLCompilerd" "OSDependentd" "SPIRV-Tools-optd" "SPIRV-Toolsd" "SPIRVd" "SPVRemapperd")
+else()
+    set(GLSLANG_SUB_LIB_NAMES
+        "GenericCodeGen" "glslang-default-resource-limits" "glslang" "HLSL" "MachineIndependent"
+        "OGLCompiler" "OSDependent" "SPIRV-Tools-opt" "SPIRV-Tools" "SPIRV" "SPVRemapper")
+endif()
+foreach(GLSLANG_SUB_LIB_NAME IN LISTS GLSLANG_SUB_LIB_NAMES)
+    find_library(GLSLANG_LIBRARY_${GLSLANG_SUB_LIB_NAME} ${GLSLANG_SUB_LIB_NAME} HINTS "${GLSLANG_LIBRARY_DIR}" REQUIRED)
+    list(APPEND CORELIBS ${GLSLANG_LIBRARY_${GLSLANG_SUB_LIB_NAME}})
+endforeach()
+
 
 set(STDIO_LIBRARY "legacy_stdio_definitions.lib")
-
-set(CORELIBS
-    "${GLFW_LIBRARY}"
-    "${OPENGL_LIBRARY}"
-    "${GLEW_LIBRARY}"
-    "${VK_LIBRARY}"
-    "${STDIO_LIBRARY}"
-    )
+list(APPEND CORELIBS ${STDIO_LIBRARY})
 
 # Enable C++11 for host code
-set(CMAKE_CUDA_STANDARD 11)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
 
 # Set up different build configurations
 set(CMAKE_CONFIGURATION_TYPES Debug;RelWithDebInfo;Release

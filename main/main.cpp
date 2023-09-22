@@ -105,9 +105,14 @@ int main(int argc, char **argv) {
     for (auto &&l:config["lights"])
     {
         string typeString = l["type"];
-        LightType type = DirectionalLight;
-        if(typeString == "directional") type = DirectionalLight;
-        else if(typeString == "point") type = PointLight;
+        LightType type = (typeString == "directional" ? DirectionalLight :
+                         (typeString == "point" ? PointLight : InvalidLight));
+
+        if(type == InvalidLight)
+        {
+            cout << "[Error] Config Light Type Invalid\n";
+            return 2;
+        }
 
         light.push_back({
                             type,

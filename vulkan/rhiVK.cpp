@@ -1,15 +1,20 @@
 #include "rhiVK.h"
+#include "VulkanMacro.h"
+#include "VulkanShader.h"
 #include "main/rhi.h"
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
-#include "VulkanMacro.h"
 #include "glm/glm.hpp"
+#include "glslang/Public/ShaderLang.h"
+#include "glslang/Public/ResourceLimits.h"
+#include "glslang/SPIRV/GlslangToSpv.h"
 
 #include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <fstream>
 
 #ifndef NDEBUG
 #define VK_VALIDATION_LAYER
@@ -20,7 +25,8 @@ void RHIVK::init(int width, int height, bool vsync) {
     this->height = height;
     this->vsync = vsync;
 
-    assert(glfwInit()==GLFW_TRUE);
+    int glfwInitRes = glfwInit();
+    assert(glfwInitRes == GLFW_TRUE);
     createInstance();
     initSurface();
     setPhysicalDevice();
@@ -50,6 +56,10 @@ void RHIVK::draw(const char *title) {
 }
 
 void RHIVK::destroy() {
+    for(auto& thisSwapChainImageView:swapChainImageViews)
+    {
+        vkDestroyImageView(device,thisSwapChainImageView, nullptr);
+    }
     vkDestroySwapchainKHR(device, swapChain, nullptr);
     vkDestroyDevice(device, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -315,6 +325,74 @@ void RHIVK::createSwapChain() {
     assert(swapChainImageCount>0);
     swapChainImages.resize(swapChainImageCount);
     vkGetSwapchainImagesKHR(device, swapChain, &swapChainImageCount, swapChainImages.data());
+    swapChainImageViews.resize(swapChainImageCount);
+    for(uint32_t i=0; i<imageCount; i++)
+    {
+        VkImageViewCreateInfo imageViewCreateInfo{};
+        imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewCreateInfo.image = swapChainImages[i];
+        imageViewCreateInfo.format = swapChainFormat.format;
+        imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewCreateInfo.subresourceRange.layerCount = 1;
+        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewCreateInfo.subresourceRange.levelCount = 1;
+        imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &swapChainImageViews[i]));
+    }
+}
 
+VkShaderModule RHIVK::createShaderModule(const VkShaderStageFlagBits shaderStage, const char *shaderCode) {
+    glslang::InitializeProcess();
+
+    EShLanguage shaderType;
+    switch (shaderStage) {
+        case VK_SHADER_STAGE_VERTEX_BIT:             shaderType = EShLangVertex;         break;
+        case VK_SHADER_STAGE_FRAGMENT_BIT:           shaderType = EShLangFragment;       break;
+        default: abort();
+    }
+
+    glslang::TShader shader(shaderType);
+    shader.setStrings(&shaderCode, 1);
+    shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+
+    if (!shader.parse(GetDefaultResources(), 460, false, EShMsgVulkanRules))
+    {
+        std::cout << "[Error]GLSL Parsing Failed!\n";
+        std::cout << shader.getInfoLog() << "\n";
+        std::cout << shader.getInfoDebugLog() << "\n";
+        abort();
+    }
+
+    glslang::TProgram program;
+    program.addShader(&shader);
+
+    if (!program.link(EShMsgVulkanRules))
+    {
+        std::cout << "[Error]Program Linking Failed!\n";
+        std::cout << program.getInfoLog() << "\n";
+        std::cout << program.getInfoDebugLog() << "\n";
+        abort();
+    }
+
+    std::vector<unsigned int> spirvCode;
+    glslang::GlslangToSpv(*program.getIntermediate(shaderType), spirvCode);
+
+    VkShaderModuleCreateInfo shaderModuleCreateInfo{};
+    shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderModuleCreateInfo.codeSize = spirvCode.size() * sizeof(unsigned int);
+    shaderModuleCreateInfo.pCode = spirvCode.data();
+
+    VkShaderModule shaderModule;
+    VK_CHECK_RESULT(vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule));
+
+    // Remember to finalize the process
+    glslang::FinalizeProcess();
+
+    return shaderModule;
 }
 
