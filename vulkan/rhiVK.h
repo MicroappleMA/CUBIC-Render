@@ -31,9 +31,12 @@ private:
 
     void createSwapChain();
 
+    VkShaderModule createShaderModule(const VkShaderStageFlagBits shaderStage, const char* shaderCode);
+
+    void createRenderPass();
+
     void initPipeline();
 
-    VkShaderModule createShaderModule(const VkShaderStageFlagBits shaderStage, const char* shaderCode);
 
     const char* VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
     const char* SWAPCHAIN_EXTENSION_NAME = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
@@ -65,6 +68,7 @@ private:
     std::vector<VkImageView> swapChainImageViews;
     VkSurfaceFormatKHR swapChainFormat;
     VkExtent2D swapChainExtent;
+    VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
 };
 
