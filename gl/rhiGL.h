@@ -7,7 +7,6 @@
 class RHIGL: public RHI {
 public:
     void init(int width, int height, bool vsync) override;
-    void initPipeline() override;
     void setCallback(PFN_cursorPosCallback cursorPosCallback,
                              PFN_scrollCallback scrollCallback,
                              PFN_mouseButtonCallback mouseButtonCallback,

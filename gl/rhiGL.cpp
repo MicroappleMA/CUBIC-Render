@@ -154,10 +154,7 @@ void RHIGL::init(int width, int height, bool vsync)
     glewExperimental = GL_TRUE;
     GLenum glewInitRes = glewInit();
     assert(glewInitRes == GLEW_OK);
-}
 
-void RHIGL::initPipeline()
-{
     initVAO();
     initTextures();
     initPBO();

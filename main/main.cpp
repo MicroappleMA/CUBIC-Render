@@ -155,7 +155,6 @@ int main(int argc, char **argv) {
     rhi = make_unique<RHIGL>();
 
     rhi->init(inverseRender?3 * width:width, height, vsync);
-    rhi->initPipeline();
     rhi->setCallback(mouseMotionCallback,mouseWheelCallback,mouseButtonCallback,keyCallback);
 
     render->init(scene, light, width, height);

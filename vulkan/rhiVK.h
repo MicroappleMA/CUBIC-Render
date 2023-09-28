@@ -9,7 +9,6 @@
 class RHIVK: public RHI {
 public:
     void init(int width, int height, bool vsync) override;
-    void initPipeline() override;
     void setCallback(PFN_cursorPosCallback cursorPosCallback,
                      PFN_scrollCallback scrollCallback,
                      PFN_mouseButtonCallback mouseButtonCallback,
@@ -31,6 +30,8 @@ private:
     void createLogicalDevice();
 
     void createSwapChain();
+
+    void initPipeline();
 
     VkShaderModule createShaderModule(const VkShaderStageFlagBits shaderStage, const char* shaderCode);
 
@@ -64,5 +65,6 @@ private:
     std::vector<VkImageView> swapChainImageViews;
     VkSurfaceFormatKHR swapChainFormat;
     VkExtent2D swapChainExtent;
+    VkPipelineLayout pipelineLayout;
 };
 
