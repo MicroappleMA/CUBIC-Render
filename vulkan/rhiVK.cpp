@@ -54,6 +54,7 @@ void RHIVK::draw(const char *title) {
 }
 
 void RHIVK::destroy() {
+    vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
     for(auto& thisSwapChainImageView:swapChainImageViews)
@@ -436,15 +437,15 @@ void RHIVK::createRenderPass() {
 
 void RHIVK::initPipeline() {
 
-    // [Temporal Disabled] Dynamic State
-    //    std::vector<VkDynamicState> dynamicStates = {
-    //            VK_DYNAMIC_STATE_SCISSOR,
-    //            VK_DYNAMIC_STATE_VIEWPORT
-    //    };
-    //    VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
-    //    dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    //    dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
-    //    dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
+//     [Temporal Disabled] Dynamic State
+        std::vector<VkDynamicState> dynamicStates = {
+                // VK_DYNAMIC_STATE_SCISSOR,
+                // VK_DYNAMIC_STATE_VIEWPORT
+        };
+        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
+        dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
+        dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
     // Vertex Input
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
@@ -553,4 +554,49 @@ void RHIVK::initPipeline() {
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
     VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+
+    // Shader Stage
+    VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo{};
+    vertexShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertexShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertexShaderStageCreateInfo.module = createShaderModule(VK_SHADER_STAGE_VERTEX_BIT, defaultShader::vertex);
+    vertexShaderStageCreateInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragmentShaderStageCreateInfo{};
+    fragmentShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragmentShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragmentShaderStageCreateInfo.module = createShaderModule(VK_SHADER_STAGE_FRAGMENT_BIT, defaultShader::fragment);
+    fragmentShaderStageCreateInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo shaderStageCreateInfo[] = {
+            vertexShaderStageCreateInfo,
+            fragmentShaderStageCreateInfo
+    };
+
+    VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
+    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineCreateInfo.renderPass = renderPass;
+    pipelineCreateInfo.subpass = 0;
+    pipelineCreateInfo.layout = pipelineLayout;
+    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineCreateInfo.basePipelineIndex = -1;
+    pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
+    pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
+    pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
+    pipelineCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
+    pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
+    pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+    pipelineCreateInfo.pTessellationState = nullptr;
+    pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
+    pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
+    pipelineCreateInfo.stageCount = 2;
+    pipelineCreateInfo.pStages = shaderStageCreateInfo;
+
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline));
+
+    for (auto& shaderStage: shaderStageCreateInfo)
+    {
+        vkDestroyShaderModule(device, shaderStage.module, nullptr);
+    }
+
 }
