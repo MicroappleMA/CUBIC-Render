@@ -4,6 +4,8 @@
 #include "gl/glew.h"
 #include "glfw/glfw3.h"
 
+#include <unordered_map>
+
 class RHIGL: public RHI {
 public:
     void init(int width, int height, bool vsync) override;
@@ -18,6 +20,12 @@ public:
     void destroy() override;
 
 private:
+    static std::unordered_map<int, RHIKeyCode> actionCodeMap;
+    static std::unordered_map<int, RHIKeyCode> keyCodeMap;
+    static PFN_keyCallback keyCallback;
+    static PFN_mouseButtonCallback mouseButtonCallback;
+    static PFN_scrollCallback scrollCallback;
+    static PFN_cursorPosCallback cursorPosCallback;
     static void glfwErrorCallback(int error, const char *description);
     static void glfwKeyCallback(GLFWwindow* window,int key, int scancode, int action, int mods);
     static void glfwMouseButtonCallback(GLFWwindow* window,int button, int action, int mods);
@@ -30,11 +38,6 @@ private:
     void destroyPBO();
     void destroyTexture();
 
-
-    static PFN_keyCallback keyCallback;
-    static PFN_mouseButtonCallback mouseButtonCallback;
-    static PFN_scrollCallback scrollCallback;
-    static PFN_cursorPosCallback cursorPosCallback;
     int width, height;
     bool vsync;
     GLuint positionLocation = 0;

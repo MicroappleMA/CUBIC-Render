@@ -7,7 +7,55 @@
 #include <cassert>
 #include <cuda_gl_interop.h>
 
-using namespace std;
+#include <unordered_map>
+
+std::unordered_map<int, RHIKeyCode> RHIGL::actionCodeMap = {
+        {GLFW_RELEASE,            RELEASE,            },
+        {GLFW_PRESS,              PRESS,              },
+};
+
+std::unordered_map<int, RHIKeyCode> RHIGL::keyCodeMap = {
+        {GLFW_MOUSE_BUTTON_LEFT,  MOUSE_BUTTON_LEFT,  },
+        {GLFW_MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_RIGHT, },
+        {GLFW_MOUSE_BUTTON_MIDDLE,MOUSE_BUTTON_MIDDLE,},
+        {GLFW_KEY_ESCAPE,         KEY_ESCAPE,         },
+        {GLFW_KEY_0,              KEY_0,              },
+        {GLFW_KEY_1,              KEY_1,              },
+        {GLFW_KEY_2,              KEY_2,              },
+        {GLFW_KEY_3,              KEY_3,              },
+        {GLFW_KEY_4,              KEY_4,              },
+        {GLFW_KEY_5,              KEY_5,              },
+        {GLFW_KEY_6,              KEY_6,              },
+        {GLFW_KEY_7,              KEY_7,              },
+        {GLFW_KEY_8,              KEY_8,              },
+        {GLFW_KEY_9,              KEY_9,              },
+        {GLFW_KEY_A,              KEY_A,              },
+        {GLFW_KEY_B,              KEY_B,              },
+        {GLFW_KEY_C,              KEY_C,              },
+        {GLFW_KEY_D,              KEY_D,              },
+        {GLFW_KEY_E,              KEY_E,              },
+        {GLFW_KEY_F,              KEY_F,              },
+        {GLFW_KEY_G,              KEY_G,              },
+        {GLFW_KEY_H,              KEY_H,              },
+        {GLFW_KEY_I,              KEY_I,              },
+        {GLFW_KEY_J,              KEY_J,              },
+        {GLFW_KEY_K,              KEY_K,              },
+        {GLFW_KEY_L,              KEY_L,              },
+        {GLFW_KEY_M,              KEY_M,              },
+        {GLFW_KEY_N,              KEY_N,              },
+        {GLFW_KEY_O,              KEY_O,              },
+        {GLFW_KEY_P,              KEY_P,              },
+        {GLFW_KEY_Q,              KEY_Q,              },
+        {GLFW_KEY_R,              KEY_R,              },
+        {GLFW_KEY_S,              KEY_S,              },
+        {GLFW_KEY_T,              KEY_T,              },
+        {GLFW_KEY_U,              KEY_U,              },
+        {GLFW_KEY_V,              KEY_V,              },
+        {GLFW_KEY_W,              KEY_W,              },
+        {GLFW_KEY_X,              KEY_X,              },
+        {GLFW_KEY_Y,              KEY_Y,              },
+        {GLFW_KEY_Z,              KEY_Z,              },
+};
 
 PFN_keyCallback RHIGL::keyCallback = nullptr;
 PFN_mouseButtonCallback RHIGL::mouseButtonCallback = nullptr;
@@ -21,13 +69,13 @@ void RHIGL::glfwErrorCallback(int error, const char *description) {
 void RHIGL::glfwKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if(RHIGL::keyCallback)
-        RHIGL::keyCallback(key, action);
+        RHIGL::keyCallback(keyCodeMap[key], actionCodeMap[action]);
 }
 
 void RHIGL::glfwMouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
     if(RHIGL::mouseButtonCallback)
-        RHIGL::mouseButtonCallback(button, action);
+        RHIGL::mouseButtonCallback(keyCodeMap[button], actionCodeMap[action]);
 }
 
 void RHIGL::glfwScrollCallback(GLFWwindow* window, double xoffset, double yoffset)

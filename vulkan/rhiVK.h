@@ -5,6 +5,7 @@
 #include "glfw/glfw3.h"
 
 #include <vector>
+#include <unordered_map>
 
 class RHIVK: public RHI {
 public:
@@ -20,6 +21,12 @@ public:
     void destroy() override;
 
 private:
+    static std::unordered_map<int, RHIKeyCode> actionCodeMap;
+    static std::unordered_map<int, RHIKeyCode> keyCodeMap;
+    static PFN_keyCallback keyCallback;
+    static PFN_mouseButtonCallback mouseButtonCallback;
+    static PFN_scrollCallback scrollCallback;
+    static PFN_cursorPosCallback cursorPosCallback;
     static void glfwErrorCallback(int error, const char *description);
     static void glfwKeyCallback(GLFWwindow* window,int key, int scancode, int action, int mods);
     static void glfwMouseButtonCallback(GLFWwindow* window,int button, int action, int mods);
@@ -54,11 +61,6 @@ private:
     const char* SWAPCHAIN_EXTENSION_NAME = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
     const uint32_t NVIDIA_VENDOR_ID = 0x10de;
     const float HIGHEST_QUEUE_PRIORITY = 1.0f;
-
-    static PFN_keyCallback keyCallback;
-    static PFN_mouseButtonCallback mouseButtonCallback;
-    static PFN_scrollCallback scrollCallback;
-    static PFN_cursorPosCallback cursorPosCallback;
 
     int width, height;
     bool vsync;
