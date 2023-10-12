@@ -11,6 +11,7 @@ public:
                              PFN_scrollCallback scrollCallback,
                              PFN_mouseButtonCallback mouseButtonCallback,
                              PFN_keyCallback keyCallback) override;
+    void pollEvents() override;
     void* mapBuffer() override;
     void unmapBuffer() override;
     void draw(const char* title) override;

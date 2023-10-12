@@ -160,6 +160,8 @@ int main(int argc, char **argv) {
     render->init(scene, light, width, height);
 
     while (!shouldExit) {
+        rhi->pollEvents();
+
         callRender();
 
         time_t seconds2 = time (NULL);

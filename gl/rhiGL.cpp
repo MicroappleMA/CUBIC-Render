@@ -180,6 +180,10 @@ void RHIGL::setCallback(PFN_cursorPosCallback newCursorPosCallback, PFN_scrollCa
     glfwSetCursorPosCallback(window, RHIGL::glfwCursorPosCallback);
 }
 
+void RHIGL::pollEvents() {
+    glfwPollEvents();
+}
+
 void *RHIGL::mapBuffer()
 {
     void* dptr;
@@ -193,7 +197,6 @@ void RHIGL::unmapBuffer()
 }
 
 void RHIGL::draw(const char* title) {
-    glfwPollEvents();
     glfwSetWindowTitle(window, title);
 
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);

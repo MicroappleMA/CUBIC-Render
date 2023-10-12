@@ -12,6 +12,7 @@ public:
                              PFN_scrollCallback scrollCallback,
                              PFN_mouseButtonCallback mouseButtonCallback,
                              PFN_keyCallback keyCallback)=0;
+    virtual void pollEvents()=0;
     virtual void* mapBuffer()=0;
     virtual void unmapBuffer()=0;
     virtual void draw(const char* title)=0;

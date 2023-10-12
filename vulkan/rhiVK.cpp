@@ -20,11 +20,45 @@
 #define VK_VALIDATION_LAYER
 #endif
 
+PFN_keyCallback RHIVK::keyCallback = nullptr;
+PFN_mouseButtonCallback RHIVK::mouseButtonCallback = nullptr;
+PFN_scrollCallback RHIVK::scrollCallback = nullptr;
+PFN_cursorPosCallback RHIVK::cursorPosCallback = nullptr;
+
+void RHIVK::glfwErrorCallback(int error, const char *description) {
+    fputs(description, stderr);
+}
+
+void RHIVK::glfwKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if(RHIVK::keyCallback)
+        RHIVK::keyCallback(key, action);
+}
+
+void RHIVK::glfwMouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    if(RHIVK::mouseButtonCallback)
+        RHIVK::mouseButtonCallback(button, action);
+}
+
+void RHIVK::glfwScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    if(RHIVK::scrollCallback)
+        RHIVK::scrollCallback(xoffset, yoffset);
+}
+
+void RHIVK::glfwCursorPosCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    if(RHIVK::cursorPosCallback)
+        RHIVK::cursorPosCallback(xpos, ypos);
+}
+
 void RHIVK::init(int width, int height, bool vsync) {
     this->width = width;
     this->height = height;
     this->vsync = vsync;
 
+    glfwSetErrorCallback(glfwErrorCallback);
     int glfwInitRes = glfwInit();
     assert(glfwInitRes == GLFW_TRUE);
     createInstance();
@@ -34,11 +68,25 @@ void RHIVK::init(int width, int height, bool vsync) {
     createSwapChain();
     createRenderPass();
     initPipeline();
+    createFramebuffer();
+    createCommandPoolAndBuffer();
 }
 
-void RHIVK::setCallback(PFN_cursorPosCallback cursorPosCallback, PFN_scrollCallback scrollCallback,
-                        PFN_mouseButtonCallback mouseButtonCallback, PFN_keyCallback keyCallback) {
+void RHIVK::setCallback(PFN_cursorPosCallback newCursorPosCallback, PFN_scrollCallback newScrollCallback,
+                        PFN_mouseButtonCallback newMouseButtonCallback, PFN_keyCallback newKeyCallback) {
+    RHIVK::keyCallback = newKeyCallback;
+    RHIVK::mouseButtonCallback = newMouseButtonCallback;
+    RHIVK::scrollCallback = newScrollCallback;
+    RHIVK::cursorPosCallback = newCursorPosCallback;
 
+    glfwSetKeyCallback(window, RHIVK::glfwKeyCallback);
+    glfwSetMouseButtonCallback(window, RHIVK::glfwMouseButtonCallback);
+    glfwSetScrollCallback(window, RHIVK::glfwScrollCallback);
+    glfwSetCursorPosCallback(window, RHIVK::glfwCursorPosCallback);
+}
+
+void RHIVK::pollEvents() {
+    glfwPollEvents();
 }
 
 void *RHIVK::mapBuffer() {
@@ -54,6 +102,10 @@ void RHIVK::draw(const char *title) {
 }
 
 void RHIVK::destroy() {
+    vkDestroyCommandPool(device, commandPool, nullptr);
+    for (auto& thisFramebuffer: framebuffers) {
+        vkDestroyFramebuffer(device, thisFramebuffer, nullptr);
+    }
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
@@ -117,7 +169,7 @@ void RHIVK::enableValidationLayer(VkInstanceCreateInfo &createInfo) {
 
     if(!foundValidationLayer)
     {
-        std::cout<<"[Warning] Vulkan validation layer not support.\n";
+        std::cout<<"[Warning] Vulkan validation layer is not supported.\n";
         return;
     }
 
@@ -599,4 +651,74 @@ void RHIVK::initPipeline() {
         vkDestroyShaderModule(device, shaderStage.module, nullptr);
     }
 
+}
+
+void RHIVK::createFramebuffer() {
+    framebuffers.resize(swapChainImageViews.size());
+    auto framebufferIter = framebuffers.begin();
+    for (auto& thisSwapChainImageView: swapChainImageViews)
+    {
+        VkFramebufferCreateInfo framebufferCreateInfo{};
+        framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferCreateInfo.renderPass = renderPass;
+        framebufferCreateInfo.attachmentCount = 1;
+        framebufferCreateInfo.pAttachments = &thisSwapChainImageView;
+        framebufferCreateInfo.height = swapChainExtent.height;
+        framebufferCreateInfo.width = swapChainExtent.width;
+        framebufferCreateInfo.layers = 1;
+
+        VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &(*framebufferIter)));
+
+        framebufferIter++;
+    }
+}
+
+void RHIVK::createCommandPoolAndBuffer() {
+    VkCommandPoolCreateInfo commandPoolCreateInfo{};
+    commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    commandPoolCreateInfo.queueFamilyIndex = queueFamily.graphics;
+
+    VK_CHECK_RESULT(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool));
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+    commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocateInfo.commandPool = commandPool;
+    commandBufferAllocateInfo.commandBufferCount = 1;
+    commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+    VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer));
+}
+
+void RHIVK::generateCommandBuffer(const int framebufferIndex) {
+    VkCommandBufferBeginInfo commandBufferBeginInfo{};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = 0;
+    commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+    VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo));
+
+    VkClearValue clearValue{};
+    clearValue.color = {0,0,0,0};
+    clearValue.depthStencil.depth = 0;
+    clearValue.depthStencil.stencil = 0;
+
+    VkRenderPassBeginInfo renderPassBeginInfo{};
+    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass = renderPass;
+    renderPassBeginInfo.framebuffer = framebuffers[framebufferIndex];
+    renderPassBeginInfo.clearValueCount = 1;
+    renderPassBeginInfo.pClearValues = &clearValue;
+    renderPassBeginInfo.renderArea.offset = {0,0};
+    renderPassBeginInfo.renderArea.extent = swapChainExtent;
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    vkCmdEndRenderPass(commandBuffer);
+
+    VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
 }

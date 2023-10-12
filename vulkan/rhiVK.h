@@ -13,12 +13,19 @@ public:
                      PFN_scrollCallback scrollCallback,
                      PFN_mouseButtonCallback mouseButtonCallback,
                      PFN_keyCallback keyCallback) override;
+    void pollEvents() override;
     void* mapBuffer() override;
     void unmapBuffer() override;
     void draw(const char* title) override;
     void destroy() override;
 
 private:
+    static void glfwErrorCallback(int error, const char *description);
+    static void glfwKeyCallback(GLFWwindow* window,int key, int scancode, int action, int mods);
+    static void glfwMouseButtonCallback(GLFWwindow* window,int button, int action, int mods);
+    static void glfwScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+    static void glfwCursorPosCallback(GLFWwindow* window, double xpos, double ypos);
+
     void createInstance();
     void enableValidationLayer(VkInstanceCreateInfo &createInfo);
 
@@ -37,11 +44,21 @@ private:
 
     void initPipeline();
 
+    void createFramebuffer();
+
+    void createCommandPoolAndBuffer();
+
+    void generateCommandBuffer(const int framebufferIndex);
 
     const char* VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
     const char* SWAPCHAIN_EXTENSION_NAME = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
     const uint32_t NVIDIA_VENDOR_ID = 0x10de;
     const float HIGHEST_QUEUE_PRIORITY = 1.0f;
+
+    static PFN_keyCallback keyCallback;
+    static PFN_mouseButtonCallback mouseButtonCallback;
+    static PFN_scrollCallback scrollCallback;
+    static PFN_cursorPosCallback cursorPosCallback;
 
     int width, height;
     bool vsync;
@@ -71,5 +88,8 @@ private:
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
+    std::vector<VkFramebuffer> framebuffers;
+    VkCommandPool commandPool;
+    VkCommandBuffer commandBuffer;
 };
 
