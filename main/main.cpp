@@ -27,13 +27,14 @@
 #include "render/render.h"
 #include "rhi.h"
 #include "gl/rhiGL.h"
+#include "vulkan/rhiVK.h"
 
 using namespace std;
 
 int main(int argc, char **argv);
 void callRender();
-void keyCallback(int key, int action);
-void mouseButtonCallback(int button, int action);
+void keyCallback(RHIKeyCode key, RHIKeyCode action);
+void mouseButtonCallback(RHIKeyCode button, RHIKeyCode action);
 void mouseMotionCallback(double xpos, double ypos);
 void mouseWheelCallback(double xoffset, double yoffset);
 
@@ -104,9 +105,14 @@ int main(int argc, char **argv) {
     for (auto &&l:config["lights"])
     {
         string typeString = l["type"];
-        LightType type = DirectionalLight;
-        if(typeString == "directional") type = DirectionalLight;
-        else if(typeString == "point") type = PointLight;
+        LightType type = (typeString == "directional" ? DirectionalLight :
+                         (typeString == "point" ? PointLight : InvalidLight));
+
+        if(type == InvalidLight)
+        {
+            cout << "[Error] Config Light Type Invalid\n";
+            return 2;
+        }
 
         light.push_back({
                             type,
@@ -148,19 +154,18 @@ int main(int argc, char **argv) {
     render = make_unique<Render>();
     rhi = make_unique<RHIGL>();
 
-    rhi->init();
-    rhi->initSurface(inverseRender?3 * width:width, height, vsync);
-    rhi->initPipeline();
+    rhi->init(inverseRender?3 * width:width, height, vsync);
     rhi->setCallback(mouseMotionCallback,mouseWheelCallback,mouseButtonCallback,keyCallback);
 
     render->init(scene, light, width, height);
 
     while (!shouldExit) {
+        rhi->pollEvents();
+
         callRender();
 
         time_t seconds2 = time (NULL);
         if (seconds2 - seconds >= 1) {
-
             fps = fpstracker / (seconds2 - seconds);
             fpstracker = 0;
             seconds = seconds2;
@@ -225,45 +230,44 @@ void callRender() {
 
 /////////Callback Function/////////
 
-// Index must in range[0,9]
-#define BIND_MATERIAL_KEY(index) \
-{if (key == GLFW_KEY_0 + (index)) {currentMaterial = (MaterialType)(index); }}
-
-void keyCallback(int key, int action)
+void keyCallback(RHIKeyCode key, RHIKeyCode action)
 {
-    if (action == GLFW_PRESS)
+    if (action == PRESS)
     {
-        if (key == GLFW_KEY_ESCAPE) {
+        if (key == KEY_ESCAPE) {
             shouldExit = true;
         }
-        BIND_MATERIAL_KEY(0);
-        BIND_MATERIAL_KEY(1);
-        BIND_MATERIAL_KEY(2);
-        BIND_MATERIAL_KEY(3);
-        BIND_MATERIAL_KEY(4);
-        BIND_MATERIAL_KEY(5);
-        BIND_MATERIAL_KEY(6);
-        BIND_MATERIAL_KEY(7);
-        BIND_MATERIAL_KEY(8);
+        switch (key) {
+            case KEY_0: currentMaterial = (MaterialType)0; break; // Invalid
+            case KEY_1: currentMaterial = (MaterialType)1; break; // Depth
+            case KEY_2: currentMaterial = (MaterialType)2; break; // Mesh
+            case KEY_3: currentMaterial = (MaterialType)3; break; // UV
+            case KEY_4: currentMaterial = (MaterialType)4; break; // Normal
+            case KEY_5: currentMaterial = (MaterialType)5; break; // Texture
+            case KEY_6: currentMaterial = (MaterialType)6; break; // Environment
+            case KEY_7: currentMaterial = (MaterialType)7; break; // PBR
+            case KEY_8: currentMaterial = (MaterialType)8; break; // NPR
+            default: currentMaterial = (MaterialType)0; break;    // Invalid
+        }
     }
 }
 
 
-void mouseButtonCallback(int button, int action)
+void mouseButtonCallback(RHIKeyCode button, RHIKeyCode action)
 {
-    if (action == GLFW_PRESS)
+    if (action == PRESS)
     {
-        if (button == GLFW_MOUSE_BUTTON_LEFT)
+        if (button == MOUSE_BUTTON_LEFT)
         {
             mouseState = ROTATE;
         }
-        else if (button == GLFW_MOUSE_BUTTON_RIGHT)
+        else if (button == MOUSE_BUTTON_RIGHT)
         {
             mouseState = TRANSLATE;
         }
 
     }
-    else if (action == GLFW_RELEASE)
+    else if (action == RELEASE)
     {
         mouseState = NONE;
     }

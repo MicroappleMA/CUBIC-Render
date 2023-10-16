@@ -39,7 +39,8 @@ enum MaterialType{
 
 enum LightType{
     DirectionalLight,
-    PointLight
+    PointLight,
+    InvalidLight
 };
 
 struct Light{
