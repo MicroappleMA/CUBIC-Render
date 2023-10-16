@@ -55,7 +55,9 @@ private:
 
     void createCommandPoolAndBuffer();
 
-    void generateCommandBuffer(const int framebufferIndex);
+    void createSyncObjects();
+
+    void generateCommandBuffer(const uint32_t framebufferIndex);
 
     const char* VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
     const char* SWAPCHAIN_EXTENSION_NAME = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
@@ -93,5 +95,8 @@ private:
     std::vector<VkFramebuffer> framebuffers;
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
+    VkSemaphore framebufferReadyForRender;
+    VkSemaphore framebufferReadyForPresent;
+    VkFence commandBufferFinish;
 };
 

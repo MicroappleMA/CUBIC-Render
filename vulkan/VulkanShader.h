@@ -2,7 +2,7 @@
 
 namespace defaultShader
 {
-    const char* vertex =             "#version 460\n"
+    const char* const vertex =       "#version 460\n"
                                      "\n"
                                      "layout(location = 0) out vec3 fragColor;\n"
                                      "\n"
@@ -23,7 +23,7 @@ namespace defaultShader
                                      "    fragColor = colors[gl_VertexIndex];\n"
                                      "}";
 
-    const char* fragment =           "#version 460\n"
+    const char* const fragment =     "#version 460\n"
                                      "\n"
                                      "layout(location = 0) in vec3 fragColor;\n"
                                      "layout(location = 0) out vec4 outColor;\n"

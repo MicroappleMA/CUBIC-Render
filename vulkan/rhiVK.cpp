@@ -119,6 +119,7 @@ void RHIVK::init(int width, int height, bool vsync) {
     initPipeline();
     createFramebuffer();
     createCommandPoolAndBuffer();
+    createSyncObjects();
 }
 
 void RHIVK::setCallback(PFN_cursorPosCallback newCursorPosCallback, PFN_scrollCallback newScrollCallback,
@@ -147,25 +148,76 @@ void RHIVK::unmapBuffer() {
 }
 
 void RHIVK::draw(const char *title) {
+    glfwSetWindowTitle(window, title);
 
+    vkWaitForFences(device, 1, &commandBufferFinish, VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &commandBufferFinish);
+
+    uint32_t frameBufferIndex;
+    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, framebufferReadyForRender, VK_NULL_HANDLE, &frameBufferIndex);
+
+    vkResetCommandBuffer(commandBuffer, 0);
+    generateCommandBuffer(frameBufferIndex);
+
+    std::array<VkPipelineStageFlags, 1> waitStages{
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+    };
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &framebufferReadyForRender;
+    submitInfo.pWaitDstStageMask = waitStages.data();
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &framebufferReadyForPresent;
+
+    VK_CHECK_RESULT(vkQueueSubmit(queue.graphics, 1, &submitInfo, commandBufferFinish));
+
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &framebufferReadyForPresent;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &swapChain;
+    presentInfo.pImageIndices = &frameBufferIndex;
+    presentInfo.pResults = nullptr;
+
+    VK_CHECK_RESULT(vkQueuePresentKHR(queue.graphics, &presentInfo));
 }
 
 void RHIVK::destroy() {
+    vkDeviceWaitIdle(device);
+
+    vkDestroySemaphore(device, framebufferReadyForRender, nullptr);
+    vkDestroySemaphore(device, framebufferReadyForPresent, nullptr);
+    vkDestroyFence(device, commandBufferFinish, nullptr);
+
     vkDestroyCommandPool(device, commandPool, nullptr);
+
     for (auto& thisFramebuffer: framebuffers) {
         vkDestroyFramebuffer(device, thisFramebuffer, nullptr);
     }
+
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
     vkDestroyRenderPass(device, renderPass, nullptr);
+
     for(auto& thisSwapChainImageView:swapChainImageViews)
     {
         vkDestroyImageView(device,thisSwapChainImageView, nullptr);
     }
+
     vkDestroySwapchainKHR(device, swapChain, nullptr);
+
     vkDestroyDevice(device, nullptr);
+
     vkDestroySurfaceKHR(instance, surface, nullptr);
+
     vkDestroyInstance(instance, nullptr);
+
     glfwDestroyWindow(window);
     glfwTerminate();
 }
@@ -271,7 +323,7 @@ bool RHIVK::checkDeviceSuitability(const VkPhysicalDevice &device) {
 
         uint32_t index = 0;
         QueueFamily thisQueueFamily{};
-        for(const auto thisQueueFamilyProperty:queueFamilyProperties)
+        for(const auto& thisQueueFamilyProperty:queueFamilyProperties)
         {
             if(thisQueueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
@@ -391,10 +443,10 @@ void RHIVK::createSwapChain() {
     }
     else
     {
-        uint32_t width, height;
-        glfwGetFramebufferSize(window, reinterpret_cast<int*>(&width), reinterpret_cast<int*>(&height));
-        swapChainExtent = {glm::clamp(width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width),
-                           glm::clamp(height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height)};
+        uint32_t framebufferWidth, framebufferHeight;
+        glfwGetFramebufferSize(window, reinterpret_cast<int*>(&framebufferWidth), reinterpret_cast<int*>(&framebufferHeight));
+        swapChainExtent = {glm::clamp(framebufferWidth, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width),
+                           glm::clamp(framebufferHeight, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height)};
     }
 
     // Create Swap Chain
@@ -464,7 +516,7 @@ VkShaderModule RHIVK::createShaderModule(const VkShaderStageFlagBits shaderStage
 
     if (!shader.parse(GetDefaultResources(), 460, false, EShMsgVulkanRules))
     {
-        std::cout << "[Error]GLSL Parsing Failed!\n";
+        std::cout << "[Error] GLSL Parsing Failed!\n";
         std::cout << shader.getInfoLog() << "\n";
         std::cout << shader.getInfoDebugLog() << "\n";
         abort();
@@ -475,7 +527,7 @@ VkShaderModule RHIVK::createShaderModule(const VkShaderStageFlagBits shaderStage
 
     if (!program.link(EShMsgVulkanRules))
     {
-        std::cout << "[Error]Program Linking Failed!\n";
+        std::cout << "[Error] Program Linking Failed!\n";
         std::cout << program.getInfoLog() << "\n";
         std::cout << program.getInfoDebugLog() << "\n";
         abort();
@@ -506,7 +558,7 @@ void RHIVK::createRenderPass() {
     attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
     VkAttachmentReference attachmentReference{};
@@ -524,12 +576,34 @@ void RHIVK::createRenderPass() {
     subpassDescription.pResolveAttachments = nullptr;
     subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
+    VkSubpassDependency inputSubpassDependency{};
+    inputSubpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    inputSubpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    inputSubpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    inputSubpassDependency.dstSubpass = 0;
+    inputSubpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    inputSubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+
+    VkSubpassDependency outputSubpassDependency{};
+    outputSubpassDependency.srcSubpass = 0;
+    outputSubpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    outputSubpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    outputSubpassDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+    outputSubpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    outputSubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+
+    std::array<VkSubpassDependency, 2> subpassDependency{
+            inputSubpassDependency,
+            outputSubpassDependency
+    };
+
+
     VkRenderPassCreateInfo renderPassCreateInfo{};
     renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassCreateInfo.attachmentCount = 1;
     renderPassCreateInfo.pAttachments = &attachmentDescription;
-    renderPassCreateInfo.dependencyCount = 0;
-    renderPassCreateInfo.pDependencies = nullptr;
+    renderPassCreateInfo.dependencyCount = subpassDependency.size();
+    renderPassCreateInfo.pDependencies = subpassDependency.data();
     renderPassCreateInfo.subpassCount = 1;
     renderPassCreateInfo.pSubpasses = &subpassDescription;
 
@@ -537,8 +611,7 @@ void RHIVK::createRenderPass() {
 }
 
 void RHIVK::initPipeline() {
-
-//     [Temporal Disabled] Dynamic State
+    // [Temporal Disabled] Dynamic State
         std::vector<VkDynamicState> dynamicStates = {
                 // VK_DYNAMIC_STATE_SCISSOR,
                 // VK_DYNAMIC_STATE_VIEWPORT
@@ -627,7 +700,11 @@ void RHIVK::initPipeline() {
 
     // Color Blend
     VkPipelineColorBlendAttachmentState colorBlendAttachmentState{};
-    colorBlendAttachmentState.blendEnable = VK_TRUE;
+    colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                               VK_COLOR_COMPONENT_G_BIT |
+                                               VK_COLOR_COMPONENT_B_BIT |
+                                               VK_COLOR_COMPONENT_A_BIT ;
+    colorBlendAttachmentState.blendEnable = VK_FALSE;
     colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     colorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
@@ -669,7 +746,7 @@ void RHIVK::initPipeline() {
     fragmentShaderStageCreateInfo.module = createShaderModule(VK_SHADER_STAGE_FRAGMENT_BIT, defaultShader::fragment);
     fragmentShaderStageCreateInfo.pName = "main";
 
-    VkPipelineShaderStageCreateInfo shaderStageCreateInfo[] = {
+    std::array<VkPipelineShaderStageCreateInfo,2> shaderStageCreateInfo{
             vertexShaderStageCreateInfo,
             fragmentShaderStageCreateInfo
     };
@@ -690,8 +767,8 @@ void RHIVK::initPipeline() {
     pipelineCreateInfo.pTessellationState = nullptr;
     pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
     pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
-    pipelineCreateInfo.stageCount = 2;
-    pipelineCreateInfo.pStages = shaderStageCreateInfo;
+    pipelineCreateInfo.stageCount = shaderStageCreateInfo.size();
+    pipelineCreateInfo.pStages = shaderStageCreateInfo.data();
 
     VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
@@ -739,7 +816,19 @@ void RHIVK::createCommandPoolAndBuffer() {
     VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer));
 }
 
-void RHIVK::generateCommandBuffer(const int framebufferIndex) {
+void RHIVK::createSyncObjects() {
+    VkSemaphoreCreateInfo semaphoreCreateInfo{};
+    semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &framebufferReadyForRender));
+    VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &framebufferReadyForPresent));
+
+    VkFenceCreateInfo fenceCreateInfo{};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &commandBufferFinish));
+}
+
+void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
     VkCommandBufferBeginInfo commandBufferBeginInfo{};
     commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     commandBufferBeginInfo.flags = 0;
@@ -749,8 +838,6 @@ void RHIVK::generateCommandBuffer(const int framebufferIndex) {
 
     VkClearValue clearValue{};
     clearValue.color = {0,0,0,0};
-    clearValue.depthStencil.depth = 0;
-    clearValue.depthStencil.stencil = 0;
 
     VkRenderPassBeginInfo renderPassBeginInfo{};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
