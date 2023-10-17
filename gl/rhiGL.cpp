@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <cassert>
+#include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
 #include <unordered_map>
@@ -160,13 +161,13 @@ void RHIGL::initPBO() {
 
     // Allocate data for the buffer. 4-channel 8-bit image
     glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
-    cudaGLRegisterBufferObject(pbo);
+    cudaGraphicsGLRegisterBuffer(&buffer, pbo, cudaGraphicsMapFlagsNone);
 }
 
 void RHIGL::destroyPBO() {
     if (pbo) {
         // unregister this buffer object with CUDA
-        cudaGLUnregisterBufferObject(pbo);
+        cudaGraphicsUnregisterResource(buffer);
 
         glBindBuffer(GL_ARRAY_BUFFER, pbo);
         glDeleteBuffers(1, &pbo);
@@ -234,14 +235,16 @@ void RHIGL::pollEvents() {
 
 void *RHIGL::mapBuffer()
 {
-    void* dptr;
-    cudaGLMapBufferObject((void **)&dptr, pbo);
+    void *dptr;
+    size_t size;
+    cudaGraphicsMapResources(1, &buffer);
+    cudaGraphicsResourceGetMappedPointer(&dptr, &size, buffer);
     return dptr;
 }
 
 void RHIGL::unmapBuffer()
 {
-    cudaGLUnmapBufferObject(pbo);
+    cudaGraphicsUnmapResources(1, &buffer);
 }
 
 void RHIGL::draw(const char* title) {
