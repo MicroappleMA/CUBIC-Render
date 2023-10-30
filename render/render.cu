@@ -456,7 +456,7 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
                             dev_attribute = (BufferByte**)&dev_texcoord0;
                         }
 
-                        std::cout << accessor.bufferView << "  -  " << it->second << "  -  " << it->first << '\n';
+                        // std::cout << accessor.bufferView << "  -  " << it->second << "  -  " << it->first << '\n';
 
                         dim3 numThreadsPerBlock(defaultThreadPerBlock);
                         dim3 numBlocks((n * numVertices + numThreadsPerBlock.x - 1) / numThreadsPerBlock.x);
@@ -498,7 +498,7 @@ void Render::init(const tinygltf::Scene & scene, const std::vector<Light> &light
 
                     if (!primitive.material.empty()) {
                         const tinygltf::Material &mat = scene.materials.at(primitive.material);
-                        printf("material.name = %s\n", mat.name.c_str());
+                        // printf("[Debug] material.name = %s\n", mat.name.c_str());
 
                         _initTex(scene, mat, "diffuse", diffuseTex);
                         _initTex(scene, mat, "specular", specularTex);
