@@ -59,10 +59,24 @@ private:
 
     void generateCommandBuffer(const uint32_t framebufferIndex);
 
-    const char* VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
-    const char* SWAPCHAIN_EXTENSION_NAME = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+    const char* const VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
     const uint32_t NVIDIA_VENDOR_ID = 0x10de;
     const float HIGHEST_QUEUE_PRIORITY = 1.0f;
+
+    const std::vector<const char*> CUSTOM_INSTANCE_EXTENSIONS = {
+            VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
+            VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
+    };
+
+    const std::vector<const char*> CUSTOM_DEVICE_EXTENSIONS = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+            VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME
+    };
 
     int width, height;
     bool vsync;

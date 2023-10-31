@@ -236,11 +236,24 @@ void RHIVK::createInstance() {
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
+    std::vector<const char*> extensions(CUSTOM_INSTANCE_EXTENSIONS.size() + glfwExtensionCount);
+    auto thisExtension = extensions.begin();
+    for(auto& thisCustomExtension: CUSTOM_INSTANCE_EXTENSIONS)
+    {
+        *thisExtension = thisCustomExtension;
+        thisExtension++;
+    }
+    for(size_t i=0;i<glfwExtensionCount;i++)
+    {
+        *thisExtension = glfwExtensions[i];
+        thisExtension++;
+    }
+
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = glfwExtensionCount;
-    createInfo.ppEnabledExtensionNames = glfwExtensions;
+    createInfo.enabledExtensionCount = extensions.size();
+    createInfo.ppEnabledExtensionNames = extensions.data();
     createInfo.enabledLayerCount = 0;
 
 #ifdef VK_VALIDATION_LAYER
@@ -380,8 +393,8 @@ void RHIVK::createLogicalDevice() {
     deviceCreateInfo.queueCreateInfoCount = 1;
     deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
     deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-    deviceCreateInfo.enabledExtensionCount = 1;
-    deviceCreateInfo.ppEnabledExtensionNames = &SWAPCHAIN_EXTENSION_NAME;
+    deviceCreateInfo.enabledExtensionCount = CUSTOM_DEVICE_EXTENSIONS.size();
+    deviceCreateInfo.ppEnabledExtensionNames = CUSTOM_DEVICE_EXTENSIONS.data();
 
     VK_CHECK_RESULT(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
 
