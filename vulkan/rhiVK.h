@@ -1,9 +1,11 @@
 #pragma once
 
+#include "VulkanBuffer.h"
 #include "VulkanSharedBuffer.h"
 #include "main/rhi.h"
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
+#include "glm/glm.hpp"
 
 #include <vector>
 #include <unordered_map>
@@ -58,9 +60,16 @@ private:
 
     void createSyncObjects();
 
+    void createVertexBuffer();
+
     void createSharedBuffer();
 
     void generateCommandBuffer(const uint32_t framebufferIndex);
+
+    struct VertexInput{
+        glm::vec3 position;
+        glm::vec3 color;
+    };
 
     const char* const VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
     const uint32_t NVIDIA_VENDOR_ID = 0x10de;
@@ -79,6 +88,12 @@ private:
             VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
             VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
             VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME
+    };
+
+    const std::vector<VertexInput> DEFAULT_VERTEX_INPUT = {
+            {{ 0.0, -0.7,  0.0}, {0.01, 0.00, 0.00}},
+            {{ 0.7,  0.7,  0.0}, {0.00, 0.01, 0.00}},
+            {{-0.7,  0.7,  0.0}, {0.00, 0.00, 0.01}}
     };
 
     int width, height;
@@ -115,6 +130,7 @@ private:
     VkSemaphore framebufferReadyForRender;
     VkSemaphore framebufferReadyForPresent;
     VkFence commandBufferFinish;
+    VulkanBuffer* vertexBuffer;
     VulkanSharedBuffer* sharedBuffer;
 };
 

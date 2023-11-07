@@ -1,6 +1,7 @@
 #include "rhiVK.h"
 #include "VulkanMacro.h"
 #include "VulkanShader.h"
+#include "VulkanBuffer.h"
 #include "VulkanSharedBuffer.h"
 #include "main/rhi.h"
 #include "vulkan/vulkan.h"
@@ -121,6 +122,7 @@ void RHIVK::init(int width, int height, bool vsync) {
     createFramebuffer();
     createCommandPoolAndBuffer();
     createSyncObjects();
+    createVertexBuffer();
     createSharedBuffer();
 }
 
@@ -193,6 +195,8 @@ void RHIVK::destroy() {
     vkDeviceWaitIdle(device);
 
     delete sharedBuffer;
+
+    delete vertexBuffer;
 
     vkDestroySemaphore(device, framebufferReadyForRender, nullptr);
     vkDestroySemaphore(device, framebufferReadyForPresent, nullptr);
@@ -629,22 +633,45 @@ void RHIVK::createRenderPass() {
 
 void RHIVK::initPipeline() {
     // [Temporal Disabled] Dynamic State
-        std::vector<VkDynamicState> dynamicStates = {
-                // VK_DYNAMIC_STATE_SCISSOR,
-                // VK_DYNAMIC_STATE_VIEWPORT
-        };
-        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
-        dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
-        dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
+    std::vector<VkDynamicState> dynamicStates = {
+            // VK_DYNAMIC_STATE_SCISSOR,
+            // VK_DYNAMIC_STATE_VIEWPORT
+    };
+    VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
+    dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
+    dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
     // Vertex Input
+    VkVertexInputBindingDescription vertexInputBindingDescription{};
+    vertexInputBindingDescription.binding = 0;
+    vertexInputBindingDescription.stride = sizeof(VertexInput);
+    vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    // Create Vertex Attributes based on VertexInput struct
+    VkVertexInputAttributeDescription positionAttributeDescription{};
+    positionAttributeDescription.binding = 0;
+    positionAttributeDescription.location = 0;
+    positionAttributeDescription.offset = offsetof(VertexInput, position);
+    positionAttributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+
+    VkVertexInputAttributeDescription colorAttributeDescription{};
+    colorAttributeDescription.binding = 0;
+    colorAttributeDescription.location = 1;
+    colorAttributeDescription.offset = offsetof(VertexInput, color);
+    colorAttributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+
+    std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributeDescription = {
+            positionAttributeDescription,
+            colorAttributeDescription
+    };
+
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
     vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
-    vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
-    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+    vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+    vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
+    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescription.size();
+    vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescription.data();
 
     // Input Assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
@@ -845,6 +872,14 @@ void RHIVK::createSyncObjects() {
     VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &commandBufferFinish));
 }
 
+void RHIVK::createVertexBuffer() {
+    vertexBuffer = new VulkanBuffer(physicalDevice, device, sizeof(VertexInput) * DEFAULT_VERTEX_INPUT.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+    void* vertexBufferMemoryPointer = vertexBuffer->mapMemory();
+    memcpy(vertexBufferMemoryPointer, DEFAULT_VERTEX_INPUT.data(), sizeof(VertexInput) * DEFAULT_VERTEX_INPUT.size());
+    vertexBuffer->unmapMemory();
+}
+
 void RHIVK::createSharedBuffer() {
     sharedBuffer = new VulkanSharedBuffer(physicalDevice, device, width * height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 }
@@ -872,6 +907,10 @@ void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    VkBuffer buffer = vertexBuffer->getBuffer();
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &buffer, &offset);
 
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 

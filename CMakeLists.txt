@@ -87,6 +87,7 @@ set(RENDER_FILES
 set(RHI_FILES
     "gl/rhiGL.cpp"
     "vulkan/rhiVK.cpp"
+    "vulkan/VulkanBuffer.cpp"
     "vulkan/VulkanSharedBuffer.cpp")
 
 set(MAIN_FILES
