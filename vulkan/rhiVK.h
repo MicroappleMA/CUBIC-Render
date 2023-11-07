@@ -1,5 +1,6 @@
 #pragma once
 
+#include "VulkanSharedBuffer.h"
 #include "main/rhi.h"
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
@@ -57,6 +58,8 @@ private:
 
     void createSyncObjects();
 
+    void createSharedBuffer();
+
     void generateCommandBuffer(const uint32_t framebufferIndex);
 
     const char* const VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
@@ -112,5 +115,6 @@ private:
     VkSemaphore framebufferReadyForRender;
     VkSemaphore framebufferReadyForPresent;
     VkFence commandBufferFinish;
+    VulkanSharedBuffer* sharedBuffer;
 };
 

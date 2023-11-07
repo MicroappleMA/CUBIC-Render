@@ -1,6 +1,7 @@
 #include "rhiVK.h"
 #include "VulkanMacro.h"
 #include "VulkanShader.h"
+#include "VulkanSharedBuffer.h"
 #include "main/rhi.h"
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
@@ -120,6 +121,7 @@ void RHIVK::init(int width, int height, bool vsync) {
     createFramebuffer();
     createCommandPoolAndBuffer();
     createSyncObjects();
+    createSharedBuffer();
 }
 
 void RHIVK::setCallback(PFN_cursorPosCallback newCursorPosCallback, PFN_scrollCallback newScrollCallback,
@@ -140,7 +142,7 @@ void RHIVK::pollEvents() {
 }
 
 void *RHIVK::mapBuffer() {
-    return nullptr;
+    return sharedBuffer->getCudaBuffer();
 }
 
 void RHIVK::unmapBuffer() {
@@ -189,6 +191,8 @@ void RHIVK::draw(const char *title) {
 
 void RHIVK::destroy() {
     vkDeviceWaitIdle(device);
+
+    delete sharedBuffer;
 
     vkDestroySemaphore(device, framebufferReadyForRender, nullptr);
     vkDestroySemaphore(device, framebufferReadyForPresent, nullptr);
@@ -839,6 +843,10 @@ void RHIVK::createSyncObjects() {
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &commandBufferFinish));
+}
+
+void RHIVK::createSharedBuffer() {
+    sharedBuffer = new VulkanSharedBuffer(physicalDevice, device, width * height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 }
 
 void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {

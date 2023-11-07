@@ -10,9 +10,12 @@ public:
     VulkanSharedBuffer(VkPhysicalDevice _physicalDevice, VkDevice _device, VkDeviceSize _size, VkBufferUsageFlags _usage);
     ~VulkanSharedBuffer();
 
-    inline VkBuffer getBuffer() const {return buffer;};
-    inline VkDeviceMemory getMemory() const {return memory;};
-    inline VkDeviceSize getSize() const {return size;};
+    inline VkBuffer getBuffer() const {return buffer;}
+    inline VkDeviceMemory getMemory() const {return memory;}
+    inline VkDeviceSize getSize() const {return size;}
+    inline VkBufferUsageFlags getUsage() const {return usage;}
+    inline cudaExternalMemory_t getCudaMemory() const {return cudaMemory;}
+    inline void* getCudaBuffer() const {return cudaBuffer;}
 
 private:
 
