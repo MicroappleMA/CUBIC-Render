@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
 #ifdef DEBUG
     std::cout << "CUBIC Render :: Debug Version\n";
 #else
-    cout << "CUBIC Render :: Release Version\n";
+    std::cout << "CUBIC Render :: Release Version\n";
 #endif
     if (argc != 2) {
         std::cout << "Usage: [Config Path]. Press Enter to exit\n";
