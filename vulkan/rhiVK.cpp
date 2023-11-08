@@ -123,6 +123,7 @@ void RHIVK::init(int width, int height, bool vsync) {
     createCommandPoolAndBuffer();
     createSyncObjects();
     createVertexBuffer();
+    createIndexBuffer();
     createSharedBuffer();
 }
 
@@ -154,13 +155,13 @@ void RHIVK::unmapBuffer() {
 void RHIVK::draw(const char *title) {
     glfwSetWindowTitle(window, title);
 
-    vkWaitForFences(device, 1, &commandBufferFinish, VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &commandBufferFinish);
+    VK_CHECK_RESULT(vkWaitForFences(device, 1, &commandBufferFinish, VK_TRUE, UINT64_MAX));
+    VK_CHECK_RESULT(vkResetFences(device, 1, &commandBufferFinish));
 
     uint32_t frameBufferIndex;
-    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, framebufferReadyForRender, VK_NULL_HANDLE, &frameBufferIndex);
+    VK_CHECK_RESULT(vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, framebufferReadyForRender, VK_NULL_HANDLE, &frameBufferIndex));
 
-    vkResetCommandBuffer(commandBuffer, 0);
+    VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
     generateCommandBuffer(frameBufferIndex);
 
     std::array<VkPipelineStageFlags, 1> waitStages{
@@ -195,7 +196,7 @@ void RHIVK::destroy() {
     vkDeviceWaitIdle(device);
 
     delete sharedBuffer;
-
+    delete indexBuffer;
     delete vertexBuffer;
 
     vkDestroySemaphore(device, framebufferReadyForRender, nullptr);
@@ -873,11 +874,43 @@ void RHIVK::createSyncObjects() {
 }
 
 void RHIVK::createVertexBuffer() {
-    vertexBuffer = new VulkanBuffer(physicalDevice, device, sizeof(VertexInput) * DEFAULT_VERTEX_INPUT.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    VkDeviceSize vertexBufferSize = sizeof(VertexInput) * DEFAULT_VERTEX_BUFFER.size();
+    VulkanBuffer* stagingBuffer = new VulkanBuffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-    void* vertexBufferMemoryPointer = vertexBuffer->mapMemory();
-    memcpy(vertexBufferMemoryPointer, DEFAULT_VERTEX_INPUT.data(), sizeof(VertexInput) * DEFAULT_VERTEX_INPUT.size());
-    vertexBuffer->unmapMemory();
+    void* stagingBufferPointer = stagingBuffer->mapMemory();
+    memcpy(stagingBufferPointer, DEFAULT_VERTEX_BUFFER.data(), vertexBufferSize);
+    stagingBuffer->unmapMemory();
+
+    vertexBuffer = new VulkanBuffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkBufferCopy region{};
+    region.size = vertexBufferSize;
+    region.srcOffset = 0;
+    region.dstOffset = 0;
+
+    submitCommand([&](){vkCmdCopyBuffer(commandBuffer, stagingBuffer->getBuffer(), vertexBuffer->getBuffer(), 1, &region);});
+
+    delete stagingBuffer;
+}
+
+void RHIVK::createIndexBuffer() {
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * DEFAULT_INDEX_BUFFER.size();
+    VulkanBuffer* stagingBuffer = new VulkanBuffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    void* stagingBufferPointer = stagingBuffer->mapMemory();
+    memcpy(stagingBufferPointer, DEFAULT_INDEX_BUFFER.data(), indexBufferSize);
+    stagingBuffer->unmapMemory();
+
+    indexBuffer = new VulkanBuffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkBufferCopy region{};
+    region.size = indexBufferSize;
+    region.srcOffset = 0;
+    region.dstOffset = 0;
+
+    submitCommand([&](){ vkCmdCopyBuffer(commandBuffer, stagingBuffer->getBuffer(), indexBuffer->getBuffer(), 1, &region);});
+
+    delete stagingBuffer;
 }
 
 void RHIVK::createSharedBuffer() {
@@ -887,7 +920,7 @@ void RHIVK::createSharedBuffer() {
 void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
     VkCommandBufferBeginInfo commandBufferBeginInfo{};
     commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    commandBufferBeginInfo.flags = 0;
+    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     commandBufferBeginInfo.pInheritanceInfo = nullptr;
 
     VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo));
@@ -911,10 +944,45 @@ void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
     VkBuffer buffer = vertexBuffer->getBuffer();
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &buffer, &offset);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
     VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+}
+
+void RHIVK::submitCommand(const std::function<void(void)>& command) {
+    VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
+    VkCommandBufferBeginInfo commandBufferBeginInfo{};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+    VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo));
+    command();
+    VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.pWaitSemaphores = nullptr;
+    submitInfo.pWaitDstStageMask = nullptr;
+    submitInfo.signalSemaphoreCount = 0;
+    submitInfo.pSignalSemaphores = nullptr;
+
+    VkFence fence;
+    VkFenceCreateInfo fenceCreateInfo{};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
+
+    VK_CHECK_RESULT(vkQueueSubmit(queue.graphics, 1, &submitInfo, fence));
+
+    VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX));
+
+    vkDestroyFence(device, fence, nullptr);
+    VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
 }

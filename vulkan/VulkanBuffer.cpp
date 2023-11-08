@@ -5,7 +5,7 @@ physicalDevice(_physicalDevice), device(_device), size(_size), usage(_usage), pr
     VkBufferCreateInfo bufferCreateInfo{};
     bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferCreateInfo.size = size;
-    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bufferCreateInfo.usage = usage;
     bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &buffer));
@@ -45,9 +45,12 @@ uint32_t VulkanBuffer::getMemoryTypeIndex(uint32_t memoryTypeBits) {
 }
 
 void *VulkanBuffer::mapMemory() {
-    if (property & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    if (pointer)
     {
-        void* pointer;
+        return pointer;
+    }
+    else if (property & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    {
         VK_CHECK_RESULT(vkMapMemory(device, memory, 0, VK_WHOLE_SIZE, 0, &pointer));
         return pointer;
     }
@@ -55,7 +58,7 @@ void *VulkanBuffer::mapMemory() {
 }
 
 void VulkanBuffer::unmapMemory() {
-    if (property & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    if (pointer)
     {
         vkUnmapMemory(device, memory);
     }

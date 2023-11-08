@@ -7,8 +7,10 @@
 #include "glfw/glfw3.h"
 #include "glm/glm.hpp"
 
+#include <cstdint>
 #include <vector>
 #include <unordered_map>
+#include <functional>
 
 class RHIVK: public RHI {
 public:
@@ -62,9 +64,13 @@ private:
 
     void createVertexBuffer();
 
+    void createIndexBuffer();
+
     void createSharedBuffer();
 
     void generateCommandBuffer(const uint32_t framebufferIndex);
+
+    void submitCommand(const std::function<void(void)> &command);
 
     struct VertexInput{
         glm::vec3 position;
@@ -90,10 +96,15 @@ private:
             VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME
     };
 
-    const std::vector<VertexInput> DEFAULT_VERTEX_INPUT = {
-            {{ 0.0, -0.7,  0.0}, {0.01, 0.00, 0.00}},
-            {{ 0.7,  0.7,  0.0}, {0.00, 0.01, 0.00}},
-            {{-0.7,  0.7,  0.0}, {0.00, 0.00, 0.01}}
+    const std::vector<VertexInput> DEFAULT_VERTEX_BUFFER = {
+            {{-1.0, -1.0,  0.0}, {0.00, 0.00, 0.01}},
+            {{ 1.0, -1.0,  0.0}, {0.00, 0.01, 0.00}},
+            {{ 1.0,  1.0,  0.0}, {0.01, 0.00, 0.00}},
+            {{-1.0,  1.0,  0.0}, {0.00, 0.01, 0.00}},
+    };
+
+    const std::vector<uint32_t> DEFAULT_INDEX_BUFFER = {
+            0,1,2,0,2,3
     };
 
     int width, height;
@@ -131,6 +142,7 @@ private:
     VkSemaphore framebufferReadyForPresent;
     VkFence commandBufferFinish;
     VulkanBuffer* vertexBuffer;
+    VulkanBuffer* indexBuffer;
     VulkanSharedBuffer* sharedBuffer;
 };
 

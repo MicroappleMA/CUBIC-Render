@@ -27,4 +27,5 @@ private:
     VkDeviceSize size;
     VkBufferUsageFlags usage;
     VkMemoryPropertyFlags property;
+    void* pointer = nullptr;
 };
