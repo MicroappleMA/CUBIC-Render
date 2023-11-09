@@ -5,6 +5,10 @@ echo ============ CUBIC Render ===============
 echo =========== Release Build ===============
 echo =========================================
 
-CALL build_base.bat "Release" "build"
+set BUILD_PATH="build"
+set ARTIFACT_PATH="CUBIC-Render"
+
+CALL build_base.bat "Release" %BUILD_PATH%
+CALL build_post.bat "Release" %BUILD_PATH% %ARTIFACT_PATH%
 
 pause

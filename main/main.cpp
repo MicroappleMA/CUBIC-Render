@@ -70,15 +70,20 @@ int main(int argc, char **argv) {
 #else
     std::cout << "CUBIC Render :: Release Version\n";
 #endif
+    std::string configPath;
     if (argc != 2) {
-        std::cout << "Usage: [Config Path]. Press Enter to exit\n";
-        getchar();
-        return 0;
+        std::cout << "[Info] Using Default Config Path\n";
+        configPath = "./defaultConfig.json";
+    }
+    else
+    {
+        std::cout << "[Info] Using Custom Config Path\n";
+        configPath = argv[1];
     }
 
-    std::cout<<"[Info] Config = "<<argv[1]<<"\n";
+    std::cout<<"[Info] Config = "<<configPath<<"\n";
 
-    std::ifstream ifs(argv[1]);
+    std::ifstream ifs(configPath);
 
     if (!ifs) {
         std::cerr << "[Error] Unable to open config file. Press Enter to exit\n";
