@@ -8,6 +8,10 @@ CUBIC Render
 
 ![CUBIC Render Logo](./img/logo.png)
 
+## Download
+
+[Download](https://nightly.link/MicroappleMA/CUBIC-Render/workflows/build/master/CUBIC-Render.zip) latest build from CICD pipeline.
+
 ## Prerequisites
 
 To build **CUBIC Render**, you must set up following environment.
