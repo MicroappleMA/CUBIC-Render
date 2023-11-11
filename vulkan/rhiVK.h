@@ -1,11 +1,16 @@
 #pragma once
 
+#include "VulkanBuffer.h"
+#include "VulkanSharedBuffer.h"
 #include "main/rhi.h"
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
+#include "glm/glm.hpp"
 
+#include <cstdint>
 #include <vector>
 #include <unordered_map>
+#include <functional>
 
 class RHIVK: public RHI {
 public:
@@ -57,12 +62,50 @@ private:
 
     void createSyncObjects();
 
+    void createVertexBuffer();
+
+    void createIndexBuffer();
+
+    void createSharedBuffer();
+
     void generateCommandBuffer(const uint32_t framebufferIndex);
 
-    const char* VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
-    const char* SWAPCHAIN_EXTENSION_NAME = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+    void submitCommand(const std::function<void(void)> &command);
+
+    struct VertexInput{
+        glm::vec3 position;
+        glm::vec3 color;
+    };
+
+    const char* const VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation";
     const uint32_t NVIDIA_VENDOR_ID = 0x10de;
     const float HIGHEST_QUEUE_PRIORITY = 1.0f;
+
+    const std::vector<const char*> CUSTOM_INSTANCE_EXTENSIONS = {
+            VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
+            VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
+    };
+
+    const std::vector<const char*> CUSTOM_DEVICE_EXTENSIONS = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+            VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+            VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME
+    };
+
+    const std::vector<VertexInput> DEFAULT_VERTEX_BUFFER = {
+            {{-1.0, -1.0,  0.0}, {0.00, 0.00, 0.01}},
+            {{ 1.0, -1.0,  0.0}, {0.00, 0.01, 0.00}},
+            {{ 1.0,  1.0,  0.0}, {0.01, 0.00, 0.00}},
+            {{-1.0,  1.0,  0.0}, {0.00, 0.01, 0.00}},
+    };
+
+    const std::vector<uint32_t> DEFAULT_INDEX_BUFFER = {
+            0,1,2,0,2,3
+    };
 
     int width, height;
     bool vsync;
@@ -98,5 +141,8 @@ private:
     VkSemaphore framebufferReadyForRender;
     VkSemaphore framebufferReadyForPresent;
     VkFence commandBufferFinish;
+    VulkanBuffer* vertexBuffer;
+    VulkanBuffer* indexBuffer;
+    VulkanSharedBuffer* sharedBuffer;
 };
 

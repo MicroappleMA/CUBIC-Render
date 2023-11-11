@@ -1,6 +1,8 @@
 #include "rhiVK.h"
 #include "VulkanMacro.h"
 #include "VulkanShader.h"
+#include "VulkanBuffer.h"
+#include "VulkanSharedBuffer.h"
 #include "main/rhi.h"
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
@@ -120,6 +122,9 @@ void RHIVK::init(int width, int height, bool vsync) {
     createFramebuffer();
     createCommandPoolAndBuffer();
     createSyncObjects();
+    createVertexBuffer();
+    createIndexBuffer();
+    createSharedBuffer();
 }
 
 void RHIVK::setCallback(PFN_cursorPosCallback newCursorPosCallback, PFN_scrollCallback newScrollCallback,
@@ -140,7 +145,7 @@ void RHIVK::pollEvents() {
 }
 
 void *RHIVK::mapBuffer() {
-    return nullptr;
+    return sharedBuffer->getCudaBuffer();
 }
 
 void RHIVK::unmapBuffer() {
@@ -150,13 +155,13 @@ void RHIVK::unmapBuffer() {
 void RHIVK::draw(const char *title) {
     glfwSetWindowTitle(window, title);
 
-    vkWaitForFences(device, 1, &commandBufferFinish, VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &commandBufferFinish);
+    VK_CHECK_RESULT(vkWaitForFences(device, 1, &commandBufferFinish, VK_TRUE, UINT64_MAX));
+    VK_CHECK_RESULT(vkResetFences(device, 1, &commandBufferFinish));
 
     uint32_t frameBufferIndex;
-    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, framebufferReadyForRender, VK_NULL_HANDLE, &frameBufferIndex);
+    VK_CHECK_RESULT(vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, framebufferReadyForRender, VK_NULL_HANDLE, &frameBufferIndex));
 
-    vkResetCommandBuffer(commandBuffer, 0);
+    VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
     generateCommandBuffer(frameBufferIndex);
 
     std::array<VkPipelineStageFlags, 1> waitStages{
@@ -189,6 +194,10 @@ void RHIVK::draw(const char *title) {
 
 void RHIVK::destroy() {
     vkDeviceWaitIdle(device);
+
+    delete sharedBuffer;
+    delete indexBuffer;
+    delete vertexBuffer;
 
     vkDestroySemaphore(device, framebufferReadyForRender, nullptr);
     vkDestroySemaphore(device, framebufferReadyForPresent, nullptr);
@@ -236,11 +245,24 @@ void RHIVK::createInstance() {
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
+    std::vector<const char*> extensions(CUSTOM_INSTANCE_EXTENSIONS.size() + glfwExtensionCount);
+    auto thisExtension = extensions.begin();
+    for(auto& thisCustomExtension: CUSTOM_INSTANCE_EXTENSIONS)
+    {
+        *thisExtension = thisCustomExtension;
+        thisExtension++;
+    }
+    for(size_t i=0;i<glfwExtensionCount;i++)
+    {
+        *thisExtension = glfwExtensions[i];
+        thisExtension++;
+    }
+
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = glfwExtensionCount;
-    createInfo.ppEnabledExtensionNames = glfwExtensions;
+    createInfo.enabledExtensionCount = extensions.size();
+    createInfo.ppEnabledExtensionNames = extensions.data();
     createInfo.enabledLayerCount = 0;
 
 #ifdef VK_VALIDATION_LAYER
@@ -380,8 +402,8 @@ void RHIVK::createLogicalDevice() {
     deviceCreateInfo.queueCreateInfoCount = 1;
     deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
     deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-    deviceCreateInfo.enabledExtensionCount = 1;
-    deviceCreateInfo.ppEnabledExtensionNames = &SWAPCHAIN_EXTENSION_NAME;
+    deviceCreateInfo.enabledExtensionCount = CUSTOM_DEVICE_EXTENSIONS.size();
+    deviceCreateInfo.ppEnabledExtensionNames = CUSTOM_DEVICE_EXTENSIONS.data();
 
     VK_CHECK_RESULT(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
 
@@ -612,22 +634,45 @@ void RHIVK::createRenderPass() {
 
 void RHIVK::initPipeline() {
     // [Temporal Disabled] Dynamic State
-        std::vector<VkDynamicState> dynamicStates = {
-                // VK_DYNAMIC_STATE_SCISSOR,
-                // VK_DYNAMIC_STATE_VIEWPORT
-        };
-        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
-        dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
-        dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
+    std::vector<VkDynamicState> dynamicStates = {
+            // VK_DYNAMIC_STATE_SCISSOR,
+            // VK_DYNAMIC_STATE_VIEWPORT
+    };
+    VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
+    dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
+    dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
     // Vertex Input
+    VkVertexInputBindingDescription vertexInputBindingDescription{};
+    vertexInputBindingDescription.binding = 0;
+    vertexInputBindingDescription.stride = sizeof(VertexInput);
+    vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    // Create Vertex Attributes based on VertexInput struct
+    VkVertexInputAttributeDescription positionAttributeDescription{};
+    positionAttributeDescription.binding = 0;
+    positionAttributeDescription.location = 0;
+    positionAttributeDescription.offset = offsetof(VertexInput, position);
+    positionAttributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+
+    VkVertexInputAttributeDescription colorAttributeDescription{};
+    colorAttributeDescription.binding = 0;
+    colorAttributeDescription.location = 1;
+    colorAttributeDescription.offset = offsetof(VertexInput, color);
+    colorAttributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+
+    std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributeDescription = {
+            positionAttributeDescription,
+            colorAttributeDescription
+    };
+
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
     vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
-    vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
-    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+    vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+    vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
+    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescription.size();
+    vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescription.data();
 
     // Input Assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
@@ -828,10 +873,54 @@ void RHIVK::createSyncObjects() {
     VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &commandBufferFinish));
 }
 
+void RHIVK::createVertexBuffer() {
+    VkDeviceSize vertexBufferSize = sizeof(VertexInput) * DEFAULT_VERTEX_BUFFER.size();
+    VulkanBuffer* stagingBuffer = new VulkanBuffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+    void* stagingBufferPointer = stagingBuffer->mapMemory();
+    memcpy(stagingBufferPointer, DEFAULT_VERTEX_BUFFER.data(), vertexBufferSize);
+    stagingBuffer->unmapMemory();
+
+    vertexBuffer = new VulkanBuffer(physicalDevice, device, vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkBufferCopy region{};
+    region.size = vertexBufferSize;
+    region.srcOffset = 0;
+    region.dstOffset = 0;
+
+    submitCommand([&](){vkCmdCopyBuffer(commandBuffer, stagingBuffer->getBuffer(), vertexBuffer->getBuffer(), 1, &region);});
+
+    delete stagingBuffer;
+}
+
+void RHIVK::createIndexBuffer() {
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * DEFAULT_INDEX_BUFFER.size();
+    VulkanBuffer* stagingBuffer = new VulkanBuffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    void* stagingBufferPointer = stagingBuffer->mapMemory();
+    memcpy(stagingBufferPointer, DEFAULT_INDEX_BUFFER.data(), indexBufferSize);
+    stagingBuffer->unmapMemory();
+
+    indexBuffer = new VulkanBuffer(physicalDevice, device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkBufferCopy region{};
+    region.size = indexBufferSize;
+    region.srcOffset = 0;
+    region.dstOffset = 0;
+
+    submitCommand([&](){ vkCmdCopyBuffer(commandBuffer, stagingBuffer->getBuffer(), indexBuffer->getBuffer(), 1, &region);});
+
+    delete stagingBuffer;
+}
+
+void RHIVK::createSharedBuffer() {
+    sharedBuffer = new VulkanSharedBuffer(physicalDevice, device, width * height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+}
+
 void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
     VkCommandBufferBeginInfo commandBufferBeginInfo{};
     commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    commandBufferBeginInfo.flags = 0;
+    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     commandBufferBeginInfo.pInheritanceInfo = nullptr;
 
     VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo));
@@ -852,9 +941,48 @@ void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    VkBuffer buffer = vertexBuffer->getBuffer();
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &buffer, &offset);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
     VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+}
+
+void RHIVK::submitCommand(const std::function<void(void)>& command) {
+    VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
+    VkCommandBufferBeginInfo commandBufferBeginInfo{};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+    VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo));
+    command();
+    VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.pWaitSemaphores = nullptr;
+    submitInfo.pWaitDstStageMask = nullptr;
+    submitInfo.signalSemaphoreCount = 0;
+    submitInfo.pSignalSemaphores = nullptr;
+
+    VkFence fence;
+    VkFenceCreateInfo fenceCreateInfo{};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
+
+    VK_CHECK_RESULT(vkQueueSubmit(queue.graphics, 1, &submitInfo, fence));
+
+    VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX));
+
+    vkDestroyFence(device, fence, nullptr);
+    VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
 }

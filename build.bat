@@ -4,16 +4,24 @@ echo =========================================
 echo ============ CUBIC Render ===============
 echo ============= Full Build ================
 echo =========================================
+echo.
 
-powershell -ExecutionPolicy ByPass -File decompress_lib.ps1
+set BUILD_PATH="build"
+set ARTIFACT_PATH="CUBIC-Render"
 
-cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/debug --config Debug
+echo ============ Debug Build ================
+CALL build_base.bat "Debug" %BUILD_PATH%
+CALL build_post.bat "Debug" %BUILD_PATH% %ARTIFACT_PATH%
+echo.
 
-cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
-cmake --build build/release --config Release
+echo =========== Release Build ===============
+CALL build_base.bat "Release" %BUILD_PATH%
+CALL build_post.bat "Release" %BUILD_PATH% %ARTIFACT_PATH%
+echo.
 
-cmake -S . -B build/relwithdebinfo -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build/relwithdebinfo --config RelWithDebInfo
+echo ======== RelWithDebInfo Build ===========
+CALL build_base.bat "RelWithDebInfo" %BUILD_PATH%
+CALL build_post.bat "RelWithDebInfo" %BUILD_PATH% %ARTIFACT_PATH%
+echo.
 
 pause

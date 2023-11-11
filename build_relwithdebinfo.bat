@@ -5,9 +5,10 @@ echo ============ CUBIC Render ===============
 echo ======== RelWithDebInfo Build ===========
 echo =========================================
 
-powershell -ExecutionPolicy ByPass -File decompress_lib.ps1
+set BUILD_PATH="build"
+set ARTIFACT_PATH="CUBIC-Render"
 
-cmake -S . -B build/relwithdebinfo -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build/relwithdebinfo --config RelWithDebInfo
+CALL build_base.bat "RelWithDebInfo" %BUILD_PATH%
+CALL build_post.bat "RelWithDebInfo" %BUILD_PATH% %ARTIFACT_PATH%
 
 pause

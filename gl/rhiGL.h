@@ -4,6 +4,7 @@
 #include "gl/glew.h"
 #include "glfw/glfw3.h"
 
+#include <cuda_runtime.h>
 #include <unordered_map>
 
 class RHIGL: public RHI {
@@ -37,6 +38,8 @@ private:
     void initPBO();
     void destroyPBO();
     void destroyTexture();
+
+    cudaGraphicsResource *buffer;
 
     int width, height;
     bool vsync;

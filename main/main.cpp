@@ -13,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#include <cstdint>
 #include <cuda_runtime.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -29,10 +30,10 @@
 #include "gl/rhiGL.h"
 #include "vulkan/rhiVK.h"
 
-using namespace std;
-
 int main(int argc, char **argv);
 void callRender();
+
+// Callback Functions
 void keyCallback(RHIKeyCode key, RHIKeyCode action);
 void mouseButtonCallback(RHIKeyCode button, RHIKeyCode action);
 void mouseMotionCallback(double xpos, double ypos);
@@ -40,77 +41,80 @@ void mouseWheelCallback(double xoffset, double yoffset);
 
 /////////Global Variable/////////
 
-unique_ptr<Render> render = nullptr;
-unique_ptr<RHI> rhi = nullptr;
+struct
+{
+    std::unique_ptr<Render> render = nullptr;
+    std::unique_ptr<RHI> rhi = nullptr;
 
-int frame = 0;
-int fpstracker = 0;
-double seconds = time(NULL);
-int fps = 0;
+    int width;
+    int height;
+    bool vsync;
+    bool inverseRender;
 
-bool vsync;
-int width;
-int height;
-bool inverseRender;
+    glm::vec3 transition = {0.0f,0.0f,5.0f};
+    glm::vec2 rotation = {0.0f, (float)PI};
+    MaterialType currentMaterial = Invalid;
 
-float scale = 1.0f;
-float x_trans = 0.0f, y_trans = 0.0f, z_trans = 5.0f;
-float x_angle = 0.0f, y_angle = (float)PI;
-MaterialType currentMaterial = Invalid;
+    enum MouseState { NONE = 0, ROTATE, TRANSLATE };
+    MouseState mouseState = NONE;
 
-double lastx = 0;
-double lasty = 0;
+    bool shouldExit = false;
+}global;
 
-enum ControlState { NONE = 0, ROTATE, TRANSLATE };
-ControlState mouseState = NONE;
-
-bool shouldExit = false;
 
 /////////Entry Function/////////
 
 int main(int argc, char **argv) {
 #ifdef DEBUG
-    cout << "CUBIC Render :: Debug Version\n";
+    std::cout << "CUBIC Render :: Debug Version\n";
 #else
-    cout << "CUBIC Render :: Release Version\n";
+    std::cout << "CUBIC Render :: Release Version\n";
 #endif
+    std::string configPath;
     if (argc != 2) {
-        cout << "Usage: [Config Path]. Press Enter to exit\n";
-        getchar();
-        return 0;
+        std::cout << "[Info] Using Default Config Path\n";
+        configPath = "./defaultConfig.json";
+    }
+    else
+    {
+        std::cout << "[Info] Using Custom Config Path\n";
+        configPath = argv[1];
     }
 
-    cout<<"Config = "<<argv[1]<<"\n";
+    std::cout<<"[Info] Config = "<<configPath<<"\n";
 
-    std::ifstream ifs(argv[1]);
+    std::ifstream ifs(configPath);
 
     if (!ifs) {
-        std::cerr << "Unable to open config file. Press Enter to exit\n";
+        std::cerr << "[Error] Unable to open config file. Press Enter to exit\n";
         getchar();
         return 1;   // return with error code 1
     }
 
     nlohmann::json config = nlohmann::json::parse(ifs);
 
-    vsync = config["vsync"];
-    width = config["width"];
-    height = config["height"];
-    inverseRender = config["inverseRender"];
-    string modelPath = config["model"];
+    global.vsync = config["vsync"];
+    global.width = config["width"];
+    global.height = config["height"];
+    global.inverseRender = config["inverseRender"];
+    std::string modelPath = config["model"];
 
-    cout<<"Width = "<<width<<", Height = "<<height<<", VSync = "<<vsync<<"\nModel = "<<modelPath<<"\n";
+    std::cout <<  "[Info] Width  = " << global.width  <<
+                "\n[Info] Height = " << global.height <<
+                "\n[Info] VSync  = " << global.vsync  <<
+                "\n[Info] Model  = " << modelPath     << "\n";
 
     // Load light info from json
-    vector<Light> light;
+    std::vector<Light> light;
     for (auto &&l:config["lights"])
     {
-        string typeString = l["type"];
+        std::string typeString = l["type"];
         LightType type = (typeString == "directional" ? DirectionalLight :
                          (typeString == "point" ? PointLight : InvalidLight));
 
         if(type == InvalidLight)
         {
-            cout << "[Error] Config Light Type Invalid\n";
+            std::cout << "[Error] Config Light Type Invalid\n";
             return 2;
         }
 
@@ -141,91 +145,86 @@ int main(int argc, char **argv) {
         ret = loader.LoadASCIIFromFile(&scene, &err, modelPath);
     }
 
-    if (!err.empty()) {
-        cout<<"Err: "+err;
-    }
-
-    if (!ret) {
-        cout<<"Failed to parse glTF\n";
+    if (!err.empty() || !ret) {
+        std::cout<<"[Error] Failed to parse glTF\n" << err;
         getchar();
         return -1;
     }
 
-    render = make_unique<Render>();
-    rhi = make_unique<RHIGL>();
+    global.render = std::make_unique<Render>();
+    global.rhi = std::make_unique<RHIGL>();
 
-    rhi->init(inverseRender?3 * width:width, height, vsync);
-    rhi->setCallback(mouseMotionCallback,mouseWheelCallback,mouseButtonCallback,keyCallback);
+    global.rhi->init(global.inverseRender?3 * global.width:global.width, global.height, global.vsync);
+    global.rhi->setCallback(mouseMotionCallback,mouseWheelCallback,mouseButtonCallback,keyCallback);
 
-    render->init(scene, light, width, height);
+    global.render->init(scene, light, global.width, global.height);
 
-    while (!shouldExit) {
-        rhi->pollEvents();
+    int64_t fps = 0;
+    int64_t fpsCounter = 0;
+    time_t fpsTime0 = time(nullptr);
+    time_t fpsTime1 = time (nullptr);
+
+    while (!global.shouldExit) {
+        global.rhi->pollEvents();
 
         callRender();
 
-        time_t seconds2 = time (NULL);
-        if (seconds2 - seconds >= 1) {
-            fps = fpstracker / (seconds2 - seconds);
-            fpstracker = 0;
-            seconds = seconds2;
+        fpsCounter++;
+        fpsTime1 = time(nullptr);
+        if (fpsTime1 - fpsTime0 >= 1) {
+            fps = fpsCounter / (fpsTime1 - fpsTime0);
+            fpsCounter = 0;
+            fpsTime0 = fpsTime1;
         }
 
-        string title = "CUBIC Render | " + to_string((int)fps) + " FPS";
-        rhi->draw(title.c_str());
+        std::string title = "CUBIC Render | " + std::to_string(fps) + " FPS";
+        global.rhi->draw(title.c_str());
     }
 
-    rhi->destroy();
-    render->free();
+    global.rhi->destroy();
+    global.render->free();
 
     return 0;
 }
-
 
 /////////Render Function/////////
 
 void callRender() {
 
-    glm::mat4 P = glm::frustum<float>(-scale * ((float)width) / ((float)height),
-                                      scale * ((float)width / (float)height),
+    const float scale = 1.0f;
+    glm::mat4 P = glm::frustum<float>(-scale * ((float)global.width) / ((float)global.height),
+                                      scale * ((float)global.width / (float)global.height),
                                       -scale, scale, 1.0, 1000.0);
 
     glm::mat4 V = glm::rotate((float)PI, glm::vec3{0.0f, 1.0f, 0.0f});
 
     glm::mat4 M =
-            glm::translate(glm::vec3(x_trans, y_trans, z_trans))
-            * glm::rotate(x_angle, glm::vec3{1.0f, 0.0f, 0.0f})
-            * glm::rotate(y_angle, glm::vec3{0.0f, 1.0f, 0.0f});
+            glm::translate(global.transition)
+            * glm::rotate(global.rotation.x, glm::vec3{1.0f, 0.0f, 0.0f})
+            * glm::rotate(global.rotation.y, glm::vec3{0.0f, 1.0f, 0.0f});
 
-    glm::mat3 MV_normal = glm::transpose(glm::inverse(glm::mat3(V) * glm::mat3(M)));
-    glm::mat4 MV = V * M;
-    glm::mat4 MVP = P * MV;
+    global.render->overrideMaterial = global.currentMaterial;
 
-    render->overrideMaterial = currentMaterial;
+    uchar4* buf = reinterpret_cast<uchar4*>(global.rhi->mapBuffer());
 
-    uchar4* buf = reinterpret_cast<uchar4*>(rhi->mapBuffer());
-
-    if (inverseRender)
+    if (global.inverseRender)
     {
-        render->render(M, V, P, 2 * width, 0, 3 * width, height, buf);
+        global.render->render(M, V, P, 2 * global.width, 0, 3 * global.width, global.height, buf);
         cudaDeviceSynchronize();
 
-        render->inverseRender(width, 0, 3 * width, height, buf);
+        global.render->inverseRender(global.width, 0, 3 * global.width, global.height, buf);
         cudaDeviceSynchronize();
 
-        render->renderTex(6, 0, 0, 3 * width, height, buf); // Render Baked Texture
+        global.render->renderTex(6, 0, 0, 3 * global.width, global.height, buf); // Render Baked Texture
         cudaDeviceSynchronize();
     }
     else
     {
-        render->render(M, V, P, 0, 0, width, height, buf);
+        global.render->render(M, V, P, 0, 0, global.width, global.height, buf);
         cudaDeviceSynchronize();
     }
 
-    rhi->unmapBuffer();
-
-    frame++;
-    fpstracker++;
+    global.rhi->unmapBuffer();
 }
 
 /////////Callback Function/////////
@@ -235,19 +234,19 @@ void keyCallback(RHIKeyCode key, RHIKeyCode action)
     if (action == PRESS)
     {
         if (key == KEY_ESCAPE) {
-            shouldExit = true;
+            global.shouldExit = true;
         }
         switch (key) {
-            case KEY_0: currentMaterial = (MaterialType)0; break; // Invalid
-            case KEY_1: currentMaterial = (MaterialType)1; break; // Depth
-            case KEY_2: currentMaterial = (MaterialType)2; break; // Mesh
-            case KEY_3: currentMaterial = (MaterialType)3; break; // UV
-            case KEY_4: currentMaterial = (MaterialType)4; break; // Normal
-            case KEY_5: currentMaterial = (MaterialType)5; break; // Texture
-            case KEY_6: currentMaterial = (MaterialType)6; break; // Environment
-            case KEY_7: currentMaterial = (MaterialType)7; break; // PBR
-            case KEY_8: currentMaterial = (MaterialType)8; break; // NPR
-            default: currentMaterial = (MaterialType)0; break;    // Invalid
+            case KEY_0: global.currentMaterial = (MaterialType)0; break; // Invalid
+            case KEY_1: global.currentMaterial = (MaterialType)1; break; // Depth
+            case KEY_2: global.currentMaterial = (MaterialType)2; break; // Mesh
+            case KEY_3: global.currentMaterial = (MaterialType)3; break; // UV
+            case KEY_4: global.currentMaterial = (MaterialType)4; break; // Normal
+            case KEY_5: global.currentMaterial = (MaterialType)5; break; // Texture
+            case KEY_6: global.currentMaterial = (MaterialType)6; break; // Environment
+            case KEY_7: global.currentMaterial = (MaterialType)7; break; // PBR
+            case KEY_8: global.currentMaterial = (MaterialType)8; break; // NPR
+            default: global.currentMaterial = (MaterialType)0; break;    // Invalid
         }
     }
 }
@@ -259,17 +258,17 @@ void mouseButtonCallback(RHIKeyCode button, RHIKeyCode action)
     {
         if (button == MOUSE_BUTTON_LEFT)
         {
-            mouseState = ROTATE;
+            global.mouseState = global.ROTATE;
         }
         else if (button == MOUSE_BUTTON_RIGHT)
         {
-            mouseState = TRANSLATE;
+            global.mouseState = global.TRANSLATE;
         }
 
     }
     else if (action == RELEASE)
     {
-        mouseState = NONE;
+        global.mouseState = global.NONE;
     }
 }
 
@@ -278,27 +277,30 @@ void mouseMotionCallback(double xpos, double ypos)
     const double s_r = 0.01;
     const double s_t = 0.01;
 
+    static double lastx = 0;
+    static double lasty = 0;
+
     double diffx = xpos - lastx;
     double diffy = ypos - lasty;
     lastx = xpos;
     lasty = ypos;
 
-    if (mouseState == ROTATE)
+    if (global.mouseState == global.ROTATE)
     {
         //rotate
-        x_angle -= (float)s_r * diffy;
-        y_angle += (float)s_r * diffx;
+        global.rotation.x -= (float)s_r * diffy;
+        global.rotation.y += (float)s_r * diffx;
     }
-    else if (mouseState == TRANSLATE)
+    else if (global.mouseState == global.TRANSLATE)
     {
         //translate
-        x_trans += (float)(s_t * diffx);
-        y_trans += (float)(-s_t * diffy);
+        global.transition.x += (float)(s_t * diffx);
+        global.transition.y += (float)(-s_t * diffy);
     }
 }
 
 void mouseWheelCallback(double xoffset, double yoffset)
 {
     const double sensitivity = 0.3;
-    z_trans -= (float)(sensitivity * yoffset);
+    global.transition.z -= (float)(sensitivity * yoffset);
 }

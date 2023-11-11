@@ -5,9 +5,10 @@ echo ============ CUBIC Render ===============
 echo =========== Release Build ===============
 echo =========================================
 
-powershell -ExecutionPolicy ByPass -File decompress_lib.ps1
+set BUILD_PATH="build"
+set ARTIFACT_PATH="CUBIC-Render"
 
-cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
-cmake --build build/release --config Release
+CALL build_base.bat "Release" %BUILD_PATH%
+CALL build_post.bat "Release" %BUILD_PATH% %ARTIFACT_PATH%
 
 pause

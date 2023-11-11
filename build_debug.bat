@@ -5,9 +5,10 @@ echo ============ CUBIC Render ===============
 echo ============ Debug Build ================
 echo =========================================
 
-powershell -ExecutionPolicy ByPass -File decompress_lib.ps1
+set BUILD_PATH="build"
+set ARTIFACT_PATH="CUBIC-Render"
 
-cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/debug --config Debug
+CALL build_base.bat "Debug" %BUILD_PATH%
+CALL build_post.bat "Debug" %BUILD_PATH% %ARTIFACT_PATH%
 
 pause

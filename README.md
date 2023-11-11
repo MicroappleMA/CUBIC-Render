@@ -2,11 +2,15 @@ CUBIC Render
 ===============
 **CU**DA-**b**ased **I**ndependent and **C**ustomizable Render
 
-[![Build](https://github.com/MicroappleMA/CUBIC-Render/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/MicroappleMA/CUBIC-Render/actions/workflows/build.yml)
+[![Build](https://github.com/MicroappleMA/CUBIC-Render/actions/workflows/build.yml/badge.svg)](https://github.com/MicroappleMA/CUBIC-Render/actions/workflows/build.yml)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/c27c2583221b410289df5842eeee6923)](https://app.codacy.com/gh/MicroappleMA/CUBIC-Render/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![GitHub license](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/MicroappleMA/CUBIC-Render/blob/master/LICENSE)
 
 ![CUBIC Render Logo](./img/logo.png)
+
+## Download
+
+[Download](https://nightly.link/MicroappleMA/CUBIC-Render/workflows/build/master/CUBIC-Render.zip) latest build from CICD pipeline.
 
 ## Prerequisites
 

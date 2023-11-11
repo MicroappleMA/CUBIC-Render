@@ -445,7 +445,7 @@ void _initTex(const tinygltf::Scene & scene, const tinygltf::Material &mat, cons
                 texData.height = image.height;
 
                 checkCUDAError("Set Texture Image data");
-                printf("%s texture = %s\n", keyword.c_str(), image.name.c_str());
+                // printf("[Debug] %s texture = %s\n", keyword.c_str(), image.name.c_str());
             }
         }
     }

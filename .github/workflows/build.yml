@@ -19,3 +19,13 @@ jobs:
         
       - name: Build
         run: ./build.bat
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: build/
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: CUBIC-Render
+          path: CUBIC-Render/
