@@ -118,6 +118,7 @@ void RHIVK::init(int width, int height, bool vsync) {
     createLogicalDevice();
     createSwapChain();
     createRenderPass();
+    createDescriptorSetLayout();
     initPipeline();
     createFramebuffer();
     createCommandPoolAndBuffer();
@@ -125,6 +126,8 @@ void RHIVK::init(int width, int height, bool vsync) {
     createVertexBuffer();
     createIndexBuffer();
     createSharedBuffer();
+    createImage();
+    createDescriptorSet();
 }
 
 void RHIVK::setCallback(PFN_cursorPosCallback newCursorPosCallback, PFN_scrollCallback newScrollCallback,
@@ -149,7 +152,7 @@ void *RHIVK::mapBuffer() {
 }
 
 void RHIVK::unmapBuffer() {
-
+    return;
 }
 
 void RHIVK::draw(const char *title) {
@@ -195,9 +198,12 @@ void RHIVK::draw(const char *title) {
 void RHIVK::destroy() {
     vkDeviceWaitIdle(device);
 
+    delete image;
     delete sharedBuffer;
     delete indexBuffer;
     delete vertexBuffer;
+
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
     vkDestroySemaphore(device, framebufferReadyForRender, nullptr);
     vkDestroySemaphore(device, framebufferReadyForPresent, nullptr);
@@ -211,6 +217,7 @@ void RHIVK::destroy() {
 
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
     vkDestroyRenderPass(device, renderPass, nullptr);
 
@@ -632,6 +639,22 @@ void RHIVK::createRenderPass() {
     VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass));
 }
 
+void RHIVK::createDescriptorSetLayout() {
+    VkDescriptorSetLayoutBinding binding{};
+    binding.binding = 0;
+    binding.descriptorCount = 1;
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
+    descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetLayoutCreateInfo.bindingCount = 1;
+    descriptorSetLayoutCreateInfo.pBindings = &binding;
+
+    VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout));
+}
+
 void RHIVK::initPipeline() {
     // [Temporal Disabled] Dynamic State
     std::vector<VkDynamicState> dynamicStates = {
@@ -771,8 +794,8 @@ void RHIVK::initPipeline() {
     // Pipeline Layout
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 0;
-    pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+    pipelineLayoutCreateInfo.setLayoutCount = 1;
+    pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
@@ -917,6 +940,122 @@ void RHIVK::createSharedBuffer() {
     sharedBuffer = new VulkanSharedBuffer(physicalDevice, device, width * height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 }
 
+void RHIVK::createImage() {
+
+    uint32_t h = static_cast<uint32_t>(height);
+    uint32_t w = static_cast<uint32_t>(width);
+    VkImageLayout imageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+    image = new VulkanImage(physicalDevice, device, {w,h}, VK_FORMAT_R8G8B8A8_UINT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkImageMemoryBarrier imageMemoryBarrier{};
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.image = image->getImage();
+    imageMemoryBarrier.oldLayout = image->getLayout();
+    imageMemoryBarrier.newLayout = imageLayout;
+    imageMemoryBarrier.srcAccessMask = 0;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.srcQueueFamilyIndex = queueFamily.graphics;
+    imageMemoryBarrier.dstQueueFamilyIndex = queueFamily.graphics;
+    imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageMemoryBarrier.subresourceRange.layerCount = 1;
+    imageMemoryBarrier.subresourceRange.levelCount = 1;
+    imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+    imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+
+    submitCommand([&]() {
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &imageMemoryBarrier);
+    });
+    image->setLayout(imageLayout);
+
+    VulkanBuffer stagingBuffer(physicalDevice, device, image->getSize(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    void* stagingBufferPointer = stagingBuffer.mapMemory();
+    memset(stagingBufferPointer, 0x0C, stagingBuffer.getSize());
+
+    VkBufferImageCopy copyRegion{};
+    copyRegion.bufferOffset = 0;
+    copyRegion.bufferImageHeight = 0;
+    copyRegion.bufferRowLength = 0;
+    copyRegion.imageOffset = {0,0,0};
+    copyRegion.imageExtent = {w,h,1};
+    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.imageSubresource.layerCount = 1;
+    copyRegion.imageSubresource.mipLevel = 0;
+    copyRegion.imageSubresource.baseArrayLayer = 0;
+
+    submitCommand([&]() {
+        vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.getBuffer(), image->getImage(), imageLayout, 1, &copyRegion);
+    });
+
+    imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.image = image->getImage();
+    imageMemoryBarrier.oldLayout = image->getLayout();
+    imageMemoryBarrier.newLayout = imageLayout;
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    imageMemoryBarrier.srcQueueFamilyIndex = queueFamily.graphics;
+    imageMemoryBarrier.dstQueueFamilyIndex = queueFamily.graphics;
+    imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageMemoryBarrier.subresourceRange.layerCount = 1;
+    imageMemoryBarrier.subresourceRange.levelCount = 1;
+    imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+    imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+
+    submitCommand([&]() {
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &imageMemoryBarrier);
+    });
+    image->setLayout(imageLayout);
+}
+
+
+void RHIVK::createDescriptorSet(){
+    VkDescriptorPoolSize size{};
+    size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    size.descriptorCount = 1;
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+    descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolCreateInfo.poolSizeCount = 1;
+    descriptorPoolCreateInfo.pPoolSizes = &size;
+    descriptorPoolCreateInfo.maxSets = 1;
+
+    VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool));
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+    descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptorSetAllocateInfo.descriptorPool = descriptorPool;
+    descriptorSetAllocateInfo.descriptorSetCount = 1;
+    descriptorSetAllocateInfo.pSetLayouts = &descriptorSetLayout;
+
+    VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &descriptorSet));
+
+    VkDescriptorImageInfo descriptorImageInfo{};
+    descriptorImageInfo.imageView = image->getImageView();
+    descriptorImageInfo.imageLayout = image->getLayout();
+    descriptorImageInfo.sampler = image->getSampler();
+
+    VkWriteDescriptorSet writeDescriptorSet{};
+    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSet.dstSet = descriptorSet;
+    writeDescriptorSet.dstBinding = 0;
+    writeDescriptorSet.dstArrayElement = 0;
+    writeDescriptorSet.descriptorCount = 1;
+    writeDescriptorSet.pBufferInfo = nullptr;
+    writeDescriptorSet.pImageInfo = &descriptorImageInfo;
+    writeDescriptorSet.pTexelBufferView = nullptr;
+
+    vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
+}
+
 void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
     VkCommandBufferBeginInfo commandBufferBeginInfo{};
     commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -940,6 +1079,8 @@ void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
     VkBuffer buffer = vertexBuffer->getBuffer();
     VkDeviceSize offset = 0;
@@ -974,15 +1115,8 @@ void RHIVK::submitCommand(const std::function<void(void)>& command) {
     submitInfo.signalSemaphoreCount = 0;
     submitInfo.pSignalSemaphores = nullptr;
 
-    VkFence fence;
-    VkFenceCreateInfo fenceCreateInfo{};
-    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
+    VK_CHECK_RESULT(vkQueueSubmit(queue.graphics, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_CHECK_RESULT(vkQueueWaitIdle(queue.graphics));
 
-    VK_CHECK_RESULT(vkQueueSubmit(queue.graphics, 1, &submitInfo, fence));
-
-    VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX));
-
-    vkDestroyFence(device, fence, nullptr);
     VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
 }

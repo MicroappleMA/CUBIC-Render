@@ -88,7 +88,8 @@ set(RHI_FILES
     "gl/rhiGL.cpp"
     "vulkan/rhiVK.cpp"
     "vulkan/VulkanBuffer.cpp"
-    "vulkan/VulkanSharedBuffer.cpp")
+    "vulkan/VulkanSharedBuffer.cpp"
+    "vulkan/VulkanImage.cpp")
 
 set(MAIN_FILES
     "main/main.cpp")
