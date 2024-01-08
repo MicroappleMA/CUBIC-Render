@@ -164,6 +164,8 @@ void RHIVK::draw(const char *title) {
     uint32_t frameBufferIndex;
     VK_CHECK_RESULT(vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, framebufferReadyForRender, VK_NULL_HANDLE, &frameBufferIndex));
 
+    copyCudaImage();
+
     VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
     generateCommandBuffer(frameBufferIndex);
 
@@ -941,78 +943,11 @@ void RHIVK::createSharedBuffer() {
 }
 
 void RHIVK::createImage() {
-
     uint32_t h = static_cast<uint32_t>(height);
     uint32_t w = static_cast<uint32_t>(width);
-    VkImageLayout imageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
     image = new VulkanImage(physicalDevice, device, {w,h}, VK_FORMAT_R8G8B8A8_UINT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    VkImageMemoryBarrier imageMemoryBarrier{};
-    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageMemoryBarrier.image = image->getImage();
-    imageMemoryBarrier.oldLayout = image->getLayout();
-    imageMemoryBarrier.newLayout = imageLayout;
-    imageMemoryBarrier.srcAccessMask = 0;
-    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageMemoryBarrier.srcQueueFamilyIndex = queueFamily.graphics;
-    imageMemoryBarrier.dstQueueFamilyIndex = queueFamily.graphics;
-    imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageMemoryBarrier.subresourceRange.layerCount = 1;
-    imageMemoryBarrier.subresourceRange.levelCount = 1;
-    imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-    imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
-
-    submitCommand([&]() {
-        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-            0, nullptr,
-            0, nullptr,
-            1, &imageMemoryBarrier);
-    });
-    image->setLayout(imageLayout);
-
-    VulkanBuffer stagingBuffer(physicalDevice, device, image->getSize(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    void* stagingBufferPointer = stagingBuffer.mapMemory();
-    memset(stagingBufferPointer, 0x0C, stagingBuffer.getSize());
-
-    VkBufferImageCopy copyRegion{};
-    copyRegion.bufferOffset = 0;
-    copyRegion.bufferImageHeight = 0;
-    copyRegion.bufferRowLength = 0;
-    copyRegion.imageOffset = {0,0,0};
-    copyRegion.imageExtent = {w,h,1};
-    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegion.imageSubresource.layerCount = 1;
-    copyRegion.imageSubresource.mipLevel = 0;
-    copyRegion.imageSubresource.baseArrayLayer = 0;
-
-    submitCommand([&]() {
-        vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.getBuffer(), image->getImage(), imageLayout, 1, &copyRegion);
-    });
-
-    imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageMemoryBarrier.image = image->getImage();
-    imageMemoryBarrier.oldLayout = image->getLayout();
-    imageMemoryBarrier.newLayout = imageLayout;
-    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    imageMemoryBarrier.srcQueueFamilyIndex = queueFamily.graphics;
-    imageMemoryBarrier.dstQueueFamilyIndex = queueFamily.graphics;
-    imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageMemoryBarrier.subresourceRange.layerCount = 1;
-    imageMemoryBarrier.subresourceRange.levelCount = 1;
-    imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-    imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
-
-    submitCommand([&]() {
-        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-            0, nullptr,
-            0, nullptr,
-            1, &imageMemoryBarrier);
-    });
-    image->setLayout(imageLayout);
+    copyCudaImage();
 }
 
 
@@ -1119,4 +1054,68 @@ void RHIVK::submitCommand(const std::function<void(void)>& command) {
     VK_CHECK_RESULT(vkQueueWaitIdle(queue.graphics));
 
     VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffer, 0));
+}
+
+void RHIVK::copyCudaImage() {
+    VkImageMemoryBarrier imageMemoryBarrier{};
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.image = image->getImage();
+    imageMemoryBarrier.oldLayout = image->getLayout();
+    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarrier.srcAccessMask = 0;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.srcQueueFamilyIndex = queueFamily.graphics;
+    imageMemoryBarrier.dstQueueFamilyIndex = queueFamily.graphics;
+    imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageMemoryBarrier.subresourceRange.layerCount = 1;
+    imageMemoryBarrier.subresourceRange.levelCount = 1;
+    imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+    imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+
+    submitCommand([&]() {
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &imageMemoryBarrier);
+    });
+    image->setLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    VkExtent2D imageExtent = image->getExtent();
+
+    VkBufferImageCopy copyRegion{};
+    copyRegion.bufferOffset = 0;
+    copyRegion.bufferImageHeight = 0;
+    copyRegion.bufferRowLength = 0;
+    copyRegion.imageOffset = {0,0,0};
+    copyRegion.imageExtent = {imageExtent.width,imageExtent.height,1};
+    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.imageSubresource.layerCount = 1;
+    copyRegion.imageSubresource.mipLevel = 0;
+    copyRegion.imageSubresource.baseArrayLayer = 0;
+
+    submitCommand([&]() {
+        vkCmdCopyBufferToImage(commandBuffer, sharedBuffer->getBuffer(), image->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+    });
+
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.image = image->getImage();
+    imageMemoryBarrier.oldLayout = image->getLayout();
+    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    imageMemoryBarrier.srcQueueFamilyIndex = queueFamily.graphics;
+    imageMemoryBarrier.dstQueueFamilyIndex = queueFamily.graphics;
+    imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageMemoryBarrier.subresourceRange.layerCount = 1;
+    imageMemoryBarrier.subresourceRange.levelCount = 1;
+    imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+    imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+
+    submitCommand([&]() {
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &imageMemoryBarrier);
+    });
+    image->setLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }

@@ -79,6 +79,8 @@ private:
 
     void submitCommand(const std::function<void(void)> &command);
 
+    void copyCudaImage();
+
     struct VertexInput{
         glm::vec3 position;
         glm::vec3 color;
