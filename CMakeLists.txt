@@ -66,9 +66,10 @@ set(CMAKE_CXX_STANDARD 17)
 # Set up different build configurations
 set(CMAKE_CONFIGURATION_TYPES Debug;RelWithDebInfo;Release
     CACHE STRING "Set configuration types" FORCE)
-set(CMAKE_CUDA_FLAGS_DEBUG                "-O0 -G -g -DDEBUG")
-set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO       "-O2 -g -lineinfo")
-set(CMAKE_CUDA_FLAGS_RELEASE              "-O3    -DNDEBUG")
+set(SUPPRESS_CUDA_WARNINGS                "20012")
+set(CMAKE_CUDA_FLAGS_DEBUG                "-O0 -G -g -DDEBUG -diag-suppress ${SUPPRESS_CUDA_WARNINGS}")
+set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO       "-O2 -g -lineinfo -diag-suppress ${SUPPRESS_CUDA_WARNINGS}")
+set(CMAKE_CUDA_FLAGS_RELEASE              "-O3 -DNDEBUG -diag-suppress ${SUPPRESS_CUDA_WARNINGS}")
 set(CMAKE_CXX_FLAGS                       "/MD /EHsc /D _CRT_SECURE_NO_WARNINGS")
 set(CMAKE_CXX_FLAGS_DEBUG                 "/Od /Zi /D DEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO        "/O2 /Zi")
