@@ -15,6 +15,7 @@
 #include <cuda_runtime.h>
 #include "util/checkCUDAError.h"
 #include "util/tiny_gltf_loader.h"
+#include "glm/gtc/color_space.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/transform.hpp"
 
@@ -286,12 +287,13 @@ void _copyImageToPBO(uchar4* __restrict__ pbo, const glm::vec3* __restrict__ ima
         // Each thread writes one pixel location in the texture (textel)
         int index = x + (y * w);
         int pboIndex = (x + beginW) + ((y + beginH) * bufferW);
-        glm::vec3 color = glm::clamp(image[index],0.0f,1.0f);
+        glm::vec3 color = glm::convertLinearToSRGB(image[index]);
+        color = glm::clamp(color, 0.0f, 1.0f) * 255.0f;
 
         pbo[pboIndex].w = 0;
-        pbo[pboIndex].x = color.x * 255.0;
-        pbo[pboIndex].y = color.y * 255.0;
-        pbo[pboIndex].z = color.z * 255.0;
+        pbo[pboIndex].x = (unsigned char)color.x;
+        pbo[pboIndex].y = (unsigned char)color.y;
+        pbo[pboIndex].z = (unsigned char)color.z;
     }
 }
 
@@ -304,12 +306,13 @@ void _copyTexToPBO(uchar4* __restrict__ pbo, Tex tex, int w, int h, int beginW, 
         int pboIndex = (x + beginW) + ((y + beginH) * bufferW);
 
         glm::vec3 texColor = sampleTex2d(tex, {1 - (float)x / w, (float)y / h});
-        texColor = glm::clamp(texColor,0.0f,1.0f);
+        texColor = glm::convertLinearToSRGB(texColor);
+        texColor = glm::clamp(texColor,0.0f,1.0f) * 255.0f;
 
         pbo[pboIndex].w = 0;
-        pbo[pboIndex].x = texColor.x * 255.0;
-        pbo[pboIndex].y = texColor.y * 255.0;
-        pbo[pboIndex].z = texColor.z * 255.0;
+        pbo[pboIndex].x = (unsigned char)texColor.x;
+        pbo[pboIndex].y = (unsigned char)texColor.y;
+        pbo[pboIndex].z = (unsigned char)texColor.z;
     }
 }
 

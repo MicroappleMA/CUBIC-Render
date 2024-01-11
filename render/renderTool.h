@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include "glm/glm.hpp"
+#include "glm/gtc/color_space.hpp"
 #include "util/utilityCore.hpp"
 #include "dataType.h"
 
@@ -101,17 +102,21 @@ glm::vec3 getInterpolationCoef(const glm::vec3& __restrict__ barycentricCoord, c
 __device__ static
 glm::vec3 _sampleTex(const TextureData* __restrict__ tex, const unsigned int& __restrict__ index)
 {
-    return {tex[index * 3] / 255.0f,
-            tex[index * 3 + 1] / 255.0f,
-            tex[index * 3 + 2] / 255.0f};
+    glm::vec3 srgbColor =
+        {tex[index * 3] / 255.0f,
+        tex[index * 3 + 1] / 255.0f,
+        tex[index * 3 + 2] / 255.0f};
+    return glm::convertSRGBToLinear(srgbColor);
 }
 
 __device__ static
 void _writeTex(TextureData* __restrict__ tex, const unsigned int& __restrict__ index, const glm::vec3& __restrict__ value)
 {
-    tex[index * 3]     = glm::clamp(value.x, 0.0f, 1.0f) * 255;
-    tex[index * 3 + 1] = glm::clamp(value.y, 0.0f, 1.0f) * 255;
-    tex[index * 3 + 2] = glm::clamp(value.z, 0.0f, 1.0f) * 255;
+    glm::vec3 srgbColor = glm::convertLinearToSRGB(value);
+    srgbColor = glm::clamp(srgbColor, 0.0f, 1.0f) * 255.0f;
+    tex[index * 3]     = (TextureData)srgbColor.x;
+    tex[index * 3 + 1] = (TextureData)srgbColor.y;
+    tex[index * 3 + 2] = (TextureData)srgbColor.z;
 }
 
 __device__ static

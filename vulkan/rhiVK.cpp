@@ -946,7 +946,7 @@ void RHIVK::createImage() {
     uint32_t h = static_cast<uint32_t>(height);
     uint32_t w = static_cast<uint32_t>(width);
 
-    image = new VulkanImage(physicalDevice, device, {w,h}, VK_FORMAT_R8G8B8A8_UINT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    image = new VulkanImage(physicalDevice, device, {w,h}, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     copyCudaImage();
 }
 
@@ -1097,19 +1097,10 @@ void RHIVK::copyCudaImage() {
         vkCmdCopyBufferToImage(commandBuffer, sharedBuffer->getBuffer(), image->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
     });
 
-    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageMemoryBarrier.image = image->getImage();
     imageMemoryBarrier.oldLayout = image->getLayout();
     imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    imageMemoryBarrier.srcQueueFamilyIndex = queueFamily.graphics;
-    imageMemoryBarrier.dstQueueFamilyIndex = queueFamily.graphics;
-    imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageMemoryBarrier.subresourceRange.layerCount = 1;
-    imageMemoryBarrier.subresourceRange.levelCount = 1;
-    imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-    imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
 
     submitCommand([&]() {
         vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
