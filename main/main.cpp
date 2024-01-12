@@ -46,6 +46,7 @@ struct
     std::unique_ptr<Render> render = nullptr;
     std::unique_ptr<RHI> rhi = nullptr;
 
+    std::string backend;
     int width;
     int height;
     bool vsync;
@@ -55,8 +56,11 @@ struct
     glm::vec2 rotation = {0.0f, (float)PI};
     MaterialType currentMaterial = Invalid;
 
-    enum MouseState { NONE = 0, ROTATE, TRANSLATE };
-    MouseState mouseState = NONE;
+    enum {
+        None = 0,
+        Rotate = 1,
+        Translate = 2
+    } mouseState = None;
 
     bool shouldExit = false;
 }global;
@@ -88,34 +92,37 @@ int main(int argc, char **argv) {
     if (!ifs) {
         std::cerr << "[Error] Unable to open config file. Press Enter to exit\n";
         getchar();
-        return 1;   // return with error code 1
+        return -1;
     }
 
     nlohmann::json config = nlohmann::json::parse(ifs);
 
-    global.vsync = config["vsync"];
+    global.backend = config["backend"];
     global.width = config["width"];
     global.height = config["height"];
+    global.vsync = config["vsync"];
     global.inverseRender = config["inverseRender"];
     std::string modelPath = config["model"];
 
-    std::cout <<  "[Info] Width  = " << global.width  <<
-                "\n[Info] Height = " << global.height <<
-                "\n[Info] VSync  = " << global.vsync  <<
-                "\n[Info] Model  = " << modelPath     << "\n";
+    std::cout <<  "[Info] Backend = " << global.backend <<
+                "\n[Info] Width   = " << global.width   <<
+                "\n[Info] Height  = " << global.height  <<
+                "\n[Info] VSync   = " << global.vsync   <<
+                "\n[Info] Model   = " << modelPath      << "\n";
 
     // Load light info from json
     std::vector<Light> light;
-    for (auto &&l:config["lights"])
+    for (const auto &l:config["lights"])
     {
-        std::string typeString = l["type"];
+        const std::string& typeString = l["type"];
         LightType type = (typeString == "directional" ? DirectionalLight :
-                         (typeString == "point" ? PointLight : InvalidLight));
+                         (typeString == "point" ? PointLight :
+                          InvalidLight));
 
         if(type == InvalidLight)
         {
             std::cout << "[Error] Config Light Type Invalid\n";
-            return 2;
+            return -1;
         }
 
         light.push_back({
@@ -151,18 +158,25 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    global.render = std::make_unique<Render>();
-    global.rhi = std::make_unique<RHIGL>();
+    global.rhi = (global.backend == "vulkan" ? std::unique_ptr<RHI>(std::make_unique<RHIVK>()) :
+                 (global.backend == "opengl" ? std::unique_ptr<RHI>(std::make_unique<RHIGL>()) :
+                  nullptr));
+
+    if (!global.rhi) {
+        std::cout<<"[Error] Invalid Backend\n";
+        return -1;
+    }
 
     global.rhi->init(global.inverseRender?3 * global.width:global.width, global.height, global.vsync);
     global.rhi->setCallback(mouseMotionCallback,mouseWheelCallback,mouseButtonCallback,keyCallback);
 
+    global.render = std::make_unique<Render>();
     global.render->init(scene, light, global.width, global.height);
 
     int64_t fps = 0;
     int64_t fpsCounter = 0;
     time_t fpsTime0 = time(nullptr);
-    time_t fpsTime1 = time (nullptr);
+    time_t fpsTime1 = time(nullptr);
 
     while (!global.shouldExit) {
         global.rhi->pollEvents();
@@ -177,7 +191,11 @@ int main(int argc, char **argv) {
             fpsTime0 = fpsTime1;
         }
 
-        std::string title = "CUBIC Render | " + std::to_string(fps) + " FPS";
+#ifdef DEBUG
+        std::string title = "CUBIC Render(debug/" + global.backend + ") | " + std::to_string(fps) + " FPS";
+#else
+        std::string title = "CUBIC Render(release/" + global.backend + ") | " + std::to_string(fps) + " FPS";
+#endif
         global.rhi->draw(title.c_str());
     }
 
@@ -258,17 +276,17 @@ void mouseButtonCallback(RHIKeyCode button, RHIKeyCode action)
     {
         if (button == MOUSE_BUTTON_LEFT)
         {
-            global.mouseState = global.ROTATE;
+            global.mouseState = global.Rotate;
         }
         else if (button == MOUSE_BUTTON_RIGHT)
         {
-            global.mouseState = global.TRANSLATE;
+            global.mouseState = global.Translate;
         }
 
     }
     else if (action == RELEASE)
     {
-        global.mouseState = global.NONE;
+        global.mouseState = global.None;
     }
 }
 
@@ -285,13 +303,13 @@ void mouseMotionCallback(double xpos, double ypos)
     lastx = xpos;
     lasty = ypos;
 
-    if (global.mouseState == global.ROTATE)
+    if (global.mouseState == global.Rotate)
     {
         //rotate
         global.rotation.x -= (float)s_r * diffy;
         global.rotation.y += (float)s_r * diffx;
     }
-    else if (global.mouseState == global.TRANSLATE)
+    else if (global.mouseState == global.Translate)
     {
         //translate
         global.transition.x += (float)(s_t * diffx);
