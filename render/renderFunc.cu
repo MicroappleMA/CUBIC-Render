@@ -279,7 +279,7 @@ void _inverseFragmentShading(glm::vec3* __restrict__ framebuffer, Fragment* __re
  * Kernel that writes the image to the OpenGL PBO directly.
  */
 __global__
-void _copyImageToPBO(uchar4* __restrict__ pbo, const glm::vec3* __restrict__ image, int w, int h, int beginW, int beginH, int bufferW, int bufferH) {
+void _copyImageToPBO(uchar4* __restrict__ pbo, const glm::vec3* __restrict__ image, int w, int h, int beginW, int beginH, int bufferW, int bufferH, bool gammaCorrection) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
@@ -287,7 +287,9 @@ void _copyImageToPBO(uchar4* __restrict__ pbo, const glm::vec3* __restrict__ ima
         // Each thread writes one pixel location in the texture (textel)
         int index = x + (y * w);
         int pboIndex = (x + beginW) + ((y + beginH) * bufferW);
-        glm::vec3 color = glm::convertLinearToSRGB(image[index]);
+        glm::vec3 color = image[index];
+        if (gammaCorrection)
+            color = glm::convertLinearToSRGB(color);
         color = glm::clamp(color, 0.0f, 1.0f) * 255.0f;
 
         pbo[pboIndex].w = 0;
@@ -298,15 +300,16 @@ void _copyImageToPBO(uchar4* __restrict__ pbo, const glm::vec3* __restrict__ ima
 }
 
 __global__
-void _copyTexToPBO(uchar4* __restrict__ pbo, Tex tex, int w, int h, int beginW, int beginH, int bufferW, int bufferH) {
+void _copyTexToPBO(uchar4* __restrict__ pbo, Tex tex, int w, int h, int beginW, int beginH, int bufferW, int bufferH, bool gammaCorrection) {
     int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
     if (x < w && y < h) {
         int pboIndex = (x + beginW) + ((y + beginH) * bufferW);
 
-        glm::vec3 texColor = sampleTex2d(tex, {1 - (float)x / w, (float)y / h});
-        texColor = glm::convertLinearToSRGB(texColor);
+        glm::vec3 texColor = sampleTex2d(tex, {1 - (float)x / w, (float)y / h}, false);
+        if (gammaCorrection)
+            texColor = glm::convertLinearToSRGB(texColor);
         texColor = glm::clamp(texColor,0.0f,1.0f) * 255.0f;
 
         pbo[pboIndex].w = 0;
