@@ -1,4 +1,5 @@
 {
+  "backend": "vulkan",
   "width": 500,
   "height": 500,
   "vsync": true,
@@ -10,21 +11,21 @@
       "position": {"x": 0.0, "y": 0.0, "z": 0.0},
       "direction": {"x": 0.0, "y": 0.0, "z": 0.0},
       "color": {"r": 0.6, "g": 0.6, "b": 1.0},
-      "intensity": 1.2
+      "intensity": 2.2
     },
     {
       "type": "directional",
       "position": {"x": 0.0, "y": 0.0, "z": 0.0},
       "direction": {"x": 1.0, "y": -0.5, "z": 1.0},
       "color": {"r": 0.6, "g": 0.5, "b": 1.0},
-      "intensity": 0.6
+      "intensity": 1.6
     },
     {
       "type": "directional",
       "position": {"x": 0.0, "y": 0.0, "z": 0.0},
       "direction": {"x": -1.0, "y": -0.8, "z": 1.0},
       "color": {"r": 0.5, "g": 0.6, "b": 1.0},
-      "intensity": 0.6
+      "intensity": 1.6
     }
   ]
 }

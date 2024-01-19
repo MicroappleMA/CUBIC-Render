@@ -12,9 +12,10 @@ namespace defaultShader
                                      "}";
 
     const char* const fragment =     "#version 460\n"
+                                     "layout(set = 0, binding = 0) uniform sampler2D sampler0;\n"
                                      "layout(location = 0) in vec3 fragColor;\n"
                                      "layout(location = 0) out vec4 outColor;\n"
                                      "void main() {\n"
-                                     "    outColor = vec4(fragColor, 1.0);\n"
+                                     "    outColor = textureLod(sampler0, gl_FragCoord.xy, 0.0f);\n"
                                      "}";
 }

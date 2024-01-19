@@ -107,7 +107,7 @@ void Render::render(const glm::mat4 & Model, const glm::mat4 & View, const glm::
 
     // Copy framebuffer into OpenGL buffer for OpenGL previewing
     _copyImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, dev_framebuffer, width, height,
-                                                   beginW, beginH,bufferW, bufferH);
+                                                   beginW, beginH,bufferW, bufferH, true);
     checkCUDAError("Copy Render Result To Pbo");
 }
 
@@ -164,7 +164,7 @@ void Render::inverseRender(const int &beginW, const int &beginH, const int &buff
     }
 
     _copyImageToPBO<<<blockCount2d, blockSize2d>>>(pbo, dev_framebuffer, width, height,
-                                                   beginW, beginH,bufferW, bufferH);
+                                                   beginW, beginH,bufferW, bufferH, true);
     checkCUDAError("Inverse Copy Image To PBO");
 }
 
@@ -173,7 +173,7 @@ void Render::renderTex(int texIndex, const int &beginW, const int &beginH, const
     // Assume show the first texture of the first primitive of the first mesh
     const Tex &tex = sceneInfo.mesh2PrimitivesMap.begin()->second.begin()->dev_tex[texIndex];
     _copyTexToPBO<<<blockCount2d, blockSize2d>>>(pbo, tex, width, height,
-                                                 beginW, beginH,bufferW, bufferH);
+                                                 beginW, beginH,bufferW, bufferH, true);
 }
 
 

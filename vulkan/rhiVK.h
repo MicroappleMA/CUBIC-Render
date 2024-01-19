@@ -2,6 +2,7 @@
 
 #include "VulkanBuffer.h"
 #include "VulkanSharedBuffer.h"
+#include "VulkanImage.h"
 #include "main/rhi.h"
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
@@ -54,6 +55,8 @@ private:
 
     void createRenderPass();
 
+    void createDescriptorSetLayout();
+
     void initPipeline();
 
     void createFramebuffer();
@@ -68,9 +71,15 @@ private:
 
     void createSharedBuffer();
 
+    void createImage();
+
+    void createDescriptorSet();
+
     void generateCommandBuffer(const uint32_t framebufferIndex);
 
     void submitCommand(const std::function<void(void)> &command);
+
+    void copyCudaImage();
 
     struct VertexInput{
         glm::vec3 position;
@@ -133,6 +142,7 @@ private:
     VkSurfaceFormatKHR swapChainFormat;
     VkExtent2D swapChainExtent;
     VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     std::vector<VkFramebuffer> framebuffers;
@@ -141,8 +151,11 @@ private:
     VkSemaphore framebufferReadyForRender;
     VkSemaphore framebufferReadyForPresent;
     VkFence commandBufferFinish;
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet descriptorSet;
     VulkanBuffer* vertexBuffer;
     VulkanBuffer* indexBuffer;
     VulkanSharedBuffer* sharedBuffer;
+    VulkanImage* image;
 };
 

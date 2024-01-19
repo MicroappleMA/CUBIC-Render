@@ -43,10 +43,10 @@ __global__
 void _inverseFragmentShading(glm::vec3* __restrict__ framebuffer, Fragment* __restrict__ fragmentBuffer, Light* __restrict__ light, unsigned int lightNum, int w, int h);
 
 __global__
-void _copyImageToPBO(uchar4* __restrict__ pbo, const glm::vec3* __restrict__ image, int w, int h, int beginW, int beginH, int bufferW, int bufferH);
+void _copyImageToPBO(uchar4* __restrict__ pbo, const glm::vec3* __restrict__ image, int w, int h, int beginW, int beginH, int bufferW, int bufferH, bool gammaCorrection);
 
 __global__
-void _copyTexToPBO(uchar4* __restrict__ pbo, Tex tex, int w, int h, int beginW, int beginH, int bufferW, int bufferH);
+void _copyTexToPBO(uchar4* __restrict__ pbo, Tex tex, int w, int h, int beginW, int beginH, int bufferW, int bufferH, bool gammaCorrection);
 
 __global__
 void _deviceBufferCopy(int N, BufferByte* dev_dst, const BufferByte* dev_src, int n, int byteStride, int byteOffset, int componentTypeByteSize);

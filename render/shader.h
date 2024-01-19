@@ -57,11 +57,13 @@ glm::vec3 envShader(const Fragment& __restrict__ frag)
 {
     const VertexOut &in = frag.in;
     glm::mat3 TBN = getTBN(in.tangent, in.worldNor);
-    glm::vec3 normalTex = sampleTex2d(in.tex[2], in.uv);
+    glm::vec3 normalTex = sampleTex2d(in.tex[2], in.uv, false);
+    normalTex *= glm::vec3{2,2,1};
+    normalTex -= glm::vec3{1,1,0};
     glm::vec3 normal = glm::normalize(TBN * normalTex);
     glm::vec3 view = glm::normalize(-glm::vec3(in.worldPos));
     glm::vec3 reflect = -glm::reflect(view, normal);
-    return sampleTexCubemap(in.tex[5], reflect);
+    return sampleTexCubemap(in.tex[5], reflect, true);
 }
 
 __device__ static
@@ -70,11 +72,11 @@ glm::vec3 pbrShader(const Fragment& __restrict__ frag, const Light* __restrict__
     glm::vec3 color = {0,0,0};
     const VertexOut &in = frag.in;
 
-    glm::vec3 diffuseTex = sampleTex2d(in.tex[0], in.uv);
-    glm::vec3 specularTex = sampleTex2d(in.tex[1], in.uv);
-    glm::vec3 normalTex = sampleTex2d(in.tex[2], in.uv);
-    glm::vec3 roughnessTex = sampleTex2d(in.tex[3], in.uv);
-    glm::vec3 emissionTex = sampleTex2d(in.tex[4], in.uv);
+    glm::vec3 diffuseTex = sampleTex2d(in.tex[0], in.uv, true);
+    glm::vec3 specularTex = sampleTex2d(in.tex[1], in.uv, false);
+    glm::vec3 normalTex = sampleTex2d(in.tex[2], in.uv, false);
+    glm::vec3 roughnessTex = sampleTex2d(in.tex[3], in.uv, false);
+    glm::vec3 emissionTex = sampleTex2d(in.tex[4], in.uv, false);
     glm::vec3 ViewVec = glm::normalize(-glm::vec3(in.worldPos));
     glm::mat3 TBN = getTBN(in.tangent, in.worldNor);
 
@@ -86,7 +88,7 @@ glm::vec3 pbrShader(const Fragment& __restrict__ frag, const Light* __restrict__
     glm::vec3 ReflectVec = -glm::reflect(ViewVec, NormalVec);
     float NoV = glm::clamp(glm::dot(NormalVec, ViewVec), 0.0f, 1.0f);
 
-    glm::vec3 environmentTex = sampleTexCubemap(in.tex[5], ReflectVec);
+    glm::vec3 environmentTex = sampleTexCubemap(in.tex[5], ReflectVec, true);
 
     float roughness = glm::clamp(roughnessTex.x, 0.05f, 1.0f);
     float metallic = roughnessTex.y;
@@ -142,7 +144,7 @@ glm::vec3 fragmentShader(const Fragment& __restrict__ frag, const Light* __restr
             color = in.objectNor;
             break;
         case Tex0:
-            color = sampleTex2d(in.tex[0], in.uv);
+            color = sampleTex2d(in.tex[0], in.uv, true);
             break;
         case Env:
             color = envShader(frag);
@@ -192,10 +194,10 @@ void inverseFragmentShader(glm::vec3& __restrict__ color, Fragment& __restrict__
         float x = w - (float)W1;
         float y = h - (float)H1;
 
-        glm::vec3 A = _sampleTex(bakedTex.data, W1 + H1 * bakedTex.width);
-        glm::vec3 B = _sampleTex(bakedTex.data, W2 + H1 * bakedTex.width);
-        glm::vec3 C = _sampleTex(bakedTex.data, W1 + H2 * bakedTex.width);
-        glm::vec3 D = _sampleTex(bakedTex.data, W2 + H2 * bakedTex.width);
+        glm::vec3 A = _sampleTex(bakedTex.data, W1 + H1 * bakedTex.width, false);
+        glm::vec3 B = _sampleTex(bakedTex.data, W2 + H1 * bakedTex.width, false);
+        glm::vec3 C = _sampleTex(bakedTex.data, W1 + H2 * bakedTex.width, false);
+        glm::vec3 D = _sampleTex(bakedTex.data, W2 + H2 * bakedTex.width, false);
 
         glm::vec3 M = glm::mix(A, C, y);
         glm::vec3 N = glm::mix(B, D, y);
@@ -246,10 +248,10 @@ void inverseFragmentShader(glm::vec3& __restrict__ color, Fragment& __restrict__
         D = blurCoefOther * A + blurCoefOther * B + blurCoefOther * C + blurCoefMain * D;
 
         // Write Back
-        _writeTex(bakedTex.data, W1 + H1 * bakedTex.width, A);
-        _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, B);
-        _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, C);
-        _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, D);
+        _writeTex(bakedTex.data, W1 + H1 * bakedTex.width, A, false);
+        _writeTex(bakedTex.data, W2 + H1 * bakedTex.width, B, false);
+        _writeTex(bakedTex.data, W1 + H2 * bakedTex.width, C, false);
+        _writeTex(bakedTex.data, W2 + H2 * bakedTex.width, D, false);
 
         color = R; // Display Texture
         // color = loss; // Display Loss

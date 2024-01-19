@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include "glm/glm.hpp"
+#include "glm/gtc/color_space.hpp"
 #include "util/utilityCore.hpp"
 #include "dataType.h"
 
@@ -99,23 +100,30 @@ glm::vec3 getInterpolationCoef(const glm::vec3& __restrict__ barycentricCoord, c
 }
 
 __device__ static
-glm::vec3 _sampleTex(const TextureData* __restrict__ tex, const unsigned int& __restrict__ index)
+glm::vec3 _sampleTex(const TextureData* __restrict__ tex, const unsigned int& __restrict__ index, const bool gammaCorrection)
 {
-    return {tex[index * 3] / 255.0f,
-            tex[index * 3 + 1] / 255.0f,
-            tex[index * 3 + 2] / 255.0f};
+    glm::vec3 value =
+        {tex[index * 3] / 255.0f,
+        tex[index * 3 + 1] / 255.0f,
+        tex[index * 3 + 2] / 255.0f};
+    if(gammaCorrection)
+        value = glm::convertSRGBToLinear(value);
+    return value;
 }
 
 __device__ static
-void _writeTex(TextureData* __restrict__ tex, const unsigned int& __restrict__ index, const glm::vec3& __restrict__ value)
+void _writeTex(TextureData* __restrict__ tex, const unsigned int& __restrict__ index, glm::vec3 value, const bool gammaCorrection)
 {
-    tex[index * 3]     = glm::clamp(value.x, 0.0f, 1.0f) * 255;
-    tex[index * 3 + 1] = glm::clamp(value.y, 0.0f, 1.0f) * 255;
-    tex[index * 3 + 2] = glm::clamp(value.z, 0.0f, 1.0f) * 255;
+    if(gammaCorrection)
+        value = glm::convertLinearToSRGB(value);
+    value = glm::clamp(value, 0.0f, 1.0f) * 255.0f;
+    tex[index * 3]     = (TextureData)value.x;
+    tex[index * 3 + 1] = (TextureData)value.y;
+    tex[index * 3 + 2] = (TextureData)value.z;
 }
 
 __device__ static
-glm::vec3 sampleTex2d(const Tex& __restrict__ tex, const glm::vec2& __restrict__ UV)
+glm::vec3 sampleTex2d(const Tex& __restrict__ tex, const glm::vec2& __restrict__ UV, const bool gammaCorrection)
 {
     if(tex.data==nullptr || UV.x<0 || UV.x>=1 || UV.y<0 || UV.y>=1)
         return {1,0,0}; // Ensure UV is valid
@@ -132,10 +140,10 @@ glm::vec3 sampleTex2d(const Tex& __restrict__ tex, const glm::vec2& __restrict__
 	float x = w - (float)W1;
 	float y = h - (float)H1;
 
-    glm::vec3 A = _sampleTex(tex.data, W1 + H1 * tex.width);
-    glm::vec3 B = _sampleTex(tex.data, W2 + H1 * tex.width);
-    glm::vec3 C = _sampleTex(tex.data, W1 + H2 * tex.width);
-    glm::vec3 D = _sampleTex(tex.data, W2 + H2 * tex.width);
+    glm::vec3 A = _sampleTex(tex.data, W1 + H1 * tex.width, gammaCorrection);
+    glm::vec3 B = _sampleTex(tex.data, W2 + H1 * tex.width, gammaCorrection);
+    glm::vec3 C = _sampleTex(tex.data, W1 + H2 * tex.width, gammaCorrection);
+    glm::vec3 D = _sampleTex(tex.data, W2 + H2 * tex.width, gammaCorrection);
 
 	return glm::mix(glm::mix(A, B, x),
                     glm::mix(C, D, x),
@@ -157,9 +165,9 @@ float SphericalPhi(const glm::vec3& __restrict__ v)
 }
 
 __device__ static
-glm::vec3 sampleTexCubemap(const Tex& __restrict__ tex, const glm::vec3& __restrict__ dir)
+glm::vec3 sampleTexCubemap(const Tex& __restrict__ tex, const glm::vec3& __restrict__ dir, const bool gammaCorrection)
 {
-    return sampleTex2d(tex, {SphericalPhi(dir) * INV_2PI, SphericalTheta(dir) * INV_PI});
+    return sampleTex2d(tex, {SphericalPhi(dir) * INV_2PI, SphericalTheta(dir) * INV_PI}, gammaCorrection);
 }
 
 __device__ static
