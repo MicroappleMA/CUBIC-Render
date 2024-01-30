@@ -92,7 +92,7 @@ void VulkanImage::createSampler() {
     samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     samplerCreateInfo.anisotropyEnable = VK_FALSE;
     samplerCreateInfo.maxAnisotropy = 1.0f;
-    samplerCreateInfo.unnormalizedCoordinates = VK_TRUE;
+    samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
     VK_CHECK_RESULT(vkCreateSampler(device, &samplerCreateInfo, nullptr, &sampler));
 }
