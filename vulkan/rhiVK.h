@@ -55,7 +55,7 @@ private:
 
     void createRenderPass();
 
-    void createDescriptorSetLayout();
+    void createPipelineLayout();
 
     void initPipeline();
 

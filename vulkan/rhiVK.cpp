@@ -118,7 +118,7 @@ void RHIVK::init(int width, int height, bool vsync) {
     createLogicalDevice();
     createSwapChain();
     createRenderPass();
-    createDescriptorSetLayout();
+    createPipelineLayout();
     initPipeline();
     createFramebuffer();
     createCommandPoolAndBuffer();
@@ -641,7 +641,8 @@ void RHIVK::createRenderPass() {
     VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass));
 }
 
-void RHIVK::createDescriptorSetLayout() {
+void RHIVK::createPipelineLayout() {
+    // Descriptor Set Layout
     VkDescriptorSetLayoutBinding binding{};
     binding.binding = 0;
     binding.descriptorCount = 1;
@@ -655,6 +656,22 @@ void RHIVK::createDescriptorSetLayout() {
     descriptorSetLayoutCreateInfo.pBindings = &binding;
 
     VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout));
+
+    // Push Constant Ranges
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(glm::vec2);
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    // Pipeline Layout
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutCreateInfo.setLayoutCount = 1;
+    pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+    pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+
+    VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 }
 
 void RHIVK::initPipeline() {
@@ -792,16 +809,6 @@ void RHIVK::initPipeline() {
     colorBlendStateCreateInfo.blendConstants[1] = 0.0f;
     colorBlendStateCreateInfo.blendConstants[2] = 0.0f;
     colorBlendStateCreateInfo.blendConstants[3] = 0.0f;
-
-    // Pipeline Layout
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 1;
-    pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-
-    VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
     // Shader Stage
     VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo{};
@@ -1021,6 +1028,9 @@ void RHIVK::generateCommandBuffer(const uint32_t framebufferIndex) {
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &buffer, &offset);
     vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+    glm::vec2 resolution = {width,height};
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec2), &resolution);
 
     vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
 

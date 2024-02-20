@@ -12,10 +12,13 @@ namespace defaultShader
                                      "}";
 
     const char* const fragment =     "#version 460\n"
+                                     "layout(push_constant) uniform PushConstant{vec2 resolution;}pushConstant;\n"
                                      "layout(set = 0, binding = 0) uniform sampler2D sampler0;\n"
                                      "layout(location = 0) in vec3 fragColor;\n"
                                      "layout(location = 0) out vec4 outColor;\n"
                                      "void main() {\n"
-                                     "    outColor = textureLod(sampler0, gl_FragCoord.xy, 0.0f);\n"
+                                     "    float x = 1 - gl_FragCoord.x / pushConstant.resolution.x;\n"
+                                     "    float y = gl_FragCoord.y / pushConstant.resolution.y;\n"
+                                     "    outColor = textureLod(sampler0, vec2(x,y), 0.0f);\n"
                                      "}";
 }
